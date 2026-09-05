@@ -197,22 +197,29 @@ function updateSiteFilterOptions() {
  * 更新指标卡片数据
  */
 function updateMetrics() {
-  document.getElementById("statTotalCount").textContent = allProducts.length;
+  const totalEl = document.getElementById("statTotalCount");
+  if (totalEl) totalEl.textContent = allProducts.length;
 
-  const sites = new Set(allProducts.map((p) => p.site).filter(Boolean));
-  document.getElementById("statSiteCount").textContent = sites.size;
-
-  if (sites.size > 0) {
-    document.getElementById("statSiteList").textContent = Array.from(sites).slice(0, 3).join(", ") + (sites.size > 3 ? "..." : "");
-  } else {
-    document.getElementById("statSiteList").textContent = "暂无站点";
+  const siteCountEl = document.getElementById("statSiteCount");
+  const siteListEl = document.getElementById("statSiteList");
+  if (siteCountEl || siteListEl) {
+    const sites = new Set(allProducts.map((p) => p.site).filter(Boolean));
+    if (siteCountEl) siteCountEl.textContent = sites.size;
+    if (siteListEl) {
+      siteListEl.textContent = sites.size > 0
+        ? Array.from(sites).slice(0, 3).join(", ") + (sites.size > 3 ? "..." : "")
+        : "暂无站点";
+    }
   }
 
-  if (allProducts.length > 0) {
-    const latest = allProducts[0];
-    document.getElementById("statLatestTime").textContent = latest.updatedAt || latest.collectedAt || "-";
-  } else {
-    document.getElementById("statLatestTime").textContent = "-";
+  const latestEl = document.getElementById("statLatestTime");
+  if (latestEl) {
+    if (allProducts.length > 0) {
+      const latest = allProducts[0];
+      latestEl.textContent = latest.updatedAt || latest.collectedAt || "-";
+    } else {
+      latestEl.textContent = "-";
+    }
   }
 }
 
