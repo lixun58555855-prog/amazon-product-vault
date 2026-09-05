@@ -6,21 +6,23 @@
     "price": "$6.99",
     "currency": "$ (USD/CAD/AUD)",
     "site": "amazon.com",
-    "dimensions": "21.6 x 15.2 x 5.1 cm",
-    "weight": "0.16 kg",
+    "dimensions": "31.6 x 15.2 x 10.1 cm",
+    "weight": "1.36 kg",
     "rawDimensions": "8.5\"D x 6\"W x 2\"H",
     "rawWeight": "0.16 kg",
     "shipping": {
-      "volWeight": 0.28,
-      "actualWeight": 0.16,
-      "chargeableWeight": 0.28,
-      "airCost": 18.42,
-      "seaCost": 4.19,
-      "isVolumetric": true
+      "volWeight": 0.81,
+      "actualWeight": 1.36,
+      "chargeableWeight": 1.36,
+      "airCost": 89.76,
+      "seaCost": 20.4,
+      "isVolumetric": false
     },
     "url": "https://www.amazon.com/dp/B0DXDQSB16",
     "collectedAt": "2026/9/6 02:36:35",
-    "collectedTimestamp": 1788633395280
+    "collectedTimestamp": 1788633395280,
+    "purchasePrice": "",
+    "updatedAt": "2026/9/6 03:05:23"
   },
   {
     "asin": "B0GDZLL8BK",
