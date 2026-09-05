@@ -395,16 +395,62 @@ function bindCardAndTableEvents() {
 }
 
 /**
- * 删除单个商品
+ * 删除单个商品（支持从 GitHub 云端永久删除）
  */
-function deleteProduct(asin) {
+async function deleteProduct(asin) {
+  if (!confirm(`确定要彻底删除该商品 (ASIN: ${asin}) 吗？`)) return;
+
   allProducts = allProducts.filter((item) => item.asin !== asin);
   persistProducts(allProducts, () => {
-    showToast("已成功删除该商品");
     updateSiteFilterOptions();
     updateMetrics();
     renderProducts();
   });
+
+  // 如果配置了 GitHub Token，直接通过 API 从 GitHub 仓库永久删除
+  const { owner, repo, branch = "main", token } = currentGithubConfig;
+  if (owner && repo && token) {
+    showToast("正在同步从 GitHub 云端删除...");
+    try {
+      const filePath = "data/products.json";
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+      const checkRes = await fetch(`${apiUrl}?ref=${branch}&_t=${Date.now()}`, {
+        headers: {
+          "Accept": "application/vnd.github.v3+json",
+          "Authorization": `Bearer ${token}`,
+          "User-Agent": "Amazon-Product-Collector-MV3"
+        }
+      });
+      if (checkRes.ok) {
+        const fileInfo = await checkRes.json();
+        const base64Content = utf8ToBase64(JSON.stringify(allProducts, null, 2));
+        const putRes = await fetch(apiUrl, {
+          method: "PUT",
+          headers: {
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": `Bearer ${token}`,
+            "User-Agent": "Amazon-Product-Collector-MV3",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: `Delete: ASIN ${asin} (Total: ${allProducts.length})`,
+            content: base64Content,
+            branch: branch,
+            sha: fileInfo.sha
+          })
+        });
+        if (putRes.ok) {
+          showToast("✓ 已成功从云端永久删除该商品！");
+        } else {
+          showToast("本地已删除，云端同步失败，请检查 Token");
+        }
+      }
+    } catch (e) {
+      showToast("云端删除异常: " + e.message);
+    }
+  } else {
+    showToast("已在本地删除（如需云端同步删除请在右上角配置 Token）");
+  }
 }
 
 /**

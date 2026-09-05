@@ -99,25 +99,20 @@ function renderProducts() {
   const emptyState = document.getElementById("emptyState");
   const countText = document.getElementById("productCountText");
 
-  // 根据搜索条件过滤
-  const filtered = allProducts.filter((item) => {
-    if (!currentFilterText) return true;
-    const titleMatch = item.title && item.title.toLowerCase().includes(currentFilterText);
-    const asinMatch = item.asin && item.asin.toLowerCase().includes(currentFilterText);
-    return titleMatch || asinMatch;
-  });
+  // 核心：插件本地视窗仅展示最新的 3 条
+  const displayList = filtered.slice(0, 3);
 
-  countText.textContent = `共 ${allProducts.length} 件商品${currentFilterText ? ` (过滤后 ${filtered.length} 件)` : ""}`;
+  countText.textContent = `最近采集 (展示最新 ${displayList.length} 条) • 本地共 ${allProducts.length} 件`;
 
-  if (filtered.length === 0) {
+  if (displayList.length === 0) {
     listContainer.innerHTML = "";
     emptyState.style.display = "flex";
     if (currentFilterText) {
       emptyState.querySelector(".empty-title").textContent = "未找到匹配商品";
       emptyState.querySelector(".empty-desc").textContent = `没有与 "${currentFilterText}" 相关的商品`;
     } else {
-      emptyState.querySelector(".empty-title").textContent = "本地产品库暂无商品";
-      emptyState.querySelector(".empty-desc").innerHTML = "在任意亚马逊商品页点击右键<br>选择“<b>添加到本地产品库</b>”或点击上方按钮进行采集";
+      emptyState.querySelector(".empty-title").textContent = "本地暂无最近采集";
+      emptyState.querySelector(".empty-desc").innerHTML = "在任意亚马逊商品页点击右键<br>选择“<b>添加到本地产品库</b>”自动同步至云端";
     }
     return;
   }
@@ -125,7 +120,7 @@ function renderProducts() {
   emptyState.style.display = "none";
 
   let html = "";
-  filtered.forEach((item) => {
+  displayList.forEach((item) => {
     const defaultImg = "icons/icon48.png";
     const displayImg = item.imageUrl || defaultImg;
     const displayTime = item.updatedAt ? `${item.updatedAt} (更新)` : (item.collectedAt || "未知时间");
@@ -148,7 +143,7 @@ function renderProducts() {
           </div>
           <div class="card-footer-row">
             <span>${displayTime}</span>
-            <button class="btn-card-delete" data-asin="${item.asin}" title="从本地库中删除">
+            <button class="btn-card-delete" data-asin="${item.asin}" title="仅从本地插件视窗移除（云端不受任何影响）">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
           </div>
@@ -227,25 +222,26 @@ function showStatus(text, type) {
 }
 
 /**
- * 单项删除
+ * 单项删除（仅从插件本地视窗移除，绝不删除云端）
  */
 function deleteSingleProduct(asin) {
   allProducts = allProducts.filter((item) => item.asin !== asin);
   chrome.storage.local.set({ amazon_products: allProducts }, () => {
     renderProducts();
+    showStatus("已从插件移除（云端不受任何影响）", "warn");
   });
 }
 
 /**
- * 清空全部
+ * 清空插件本地视窗
  */
 function handleClearAll() {
   if (allProducts.length === 0) return;
-  if (confirm(`确定要清空全部 ${allProducts.length} 件本地商品吗？此操作无法撤销。`)) {
+  if (confirm(`确定要清空插件本地显示的商品吗？\n\n【注意】此操作仅清理插件本地视图，云端 GitHub 上的所有数据完好无损，不受任何影响！`)) {
     chrome.storage.local.set({ amazon_products: [] }, () => {
       allProducts = [];
       renderProducts();
-      showStatus("已清空全部本地数据", "warn");
+      showStatus("已清空插件本地视窗（云端数据完好）", "warn");
     });
   }
 }

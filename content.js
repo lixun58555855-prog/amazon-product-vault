@@ -60,8 +60,8 @@ async function executeProductCollection() {
       syncing: true
     });
 
-    // 核心：立即触发后台全自动静默推送到 GitHub 云端
-    chrome.runtime.sendMessage({ action: "TRIGGER_AUTO_SYNC", asin: product.asin });
+    // 核心：立即触发后台全自动静默推送到 GitHub 云端（仅推送当前这单个商品）
+    chrome.runtime.sendMessage({ action: "TRIGGER_AUTO_SYNC", product: product });
 
     return { success: true, product, isUpdate: saveResult.isUpdate };
   } catch (error) {

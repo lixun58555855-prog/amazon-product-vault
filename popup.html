@@ -18,12 +18,11 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="btnQuickSyncGithub" class="icon-btn" title="一键同步最新数据至 GitHub 云端">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-          云端同步
-        </button>
-        <button id="btnOpenDashboard" class="icon-btn" title="打开全屏产品库管理面板">
+        <a id="btnOpenCloudVault" href="https://lixun58555855-prog.github.io/amazon-product-vault/" target="_blank" class="icon-btn" title="在新标签页打开 GitHub Pages 云端产品库">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          ☁️ 云端总库
+        </a>
+        <button id="btnOpenDashboard" class="icon-btn" title="打开全屏管理面板">
           全屏面板
         </button>
       </div>
@@ -49,11 +48,9 @@
 
     <!-- 统计行 -->
     <div class="stats-bar">
-      <span id="productCountText">共 0 件商品</span>
+      <span id="productCountText">最近采集 (最新 3 条)</span>
       <div class="stats-actions">
-        <button id="btnExportCsv" class="text-link-btn" title="导出为 Excel 兼容的 CSV 文件">导出 CSV</button>
-        <span class="divider">|</span>
-        <button id="btnClearAll" class="text-link-btn danger" title="清空全部产品">清空全部</button>
+        <button id="btnClearAll" class="text-link-btn danger" title="仅清空插件本地视窗，绝不影响云端数据">清空本地视窗</button>
       </div>
     </div>
 

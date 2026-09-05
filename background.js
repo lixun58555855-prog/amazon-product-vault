@@ -4,8 +4,7 @@
  * 1. 注册浏览器右键上下文菜单（"添加到本地产品库"）
  * 2. 监听右键点击，向当前活跃标签页发送采集指令
  * 3. 容错处理：若 content script 未注入，自动进行动态注入
- * 4. 响应打开独立 Dashboard 管理页的消息
- * 5. 核心：采集后全自动静默将数据提交至 GitHub 云端 (带互斥排队机制)
+ * 4. 核心：增量追加单件采集商品至 GitHub 云端 (彻底解耦本地与云端数据)
  */
 
 // 默认 GitHub 配置项（通过本地未提交文件或 storage 注入）
@@ -47,9 +46,10 @@ async function ensureGithubConfig() {
 }
 ensureGithubConfig();
 
-// 自动同步状态互斥锁与排队标记
+// 自动同步状态互斥锁与增量排队队列
 let isSyncing = false;
 let pendingSync = false;
+const incrementalQueue = [];
 
 // 插件安装或更新时注册右键菜单
 chrome.runtime.onInstalled.addListener(() => {
@@ -130,9 +130,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ status: "ok" });
   }
 
-  // 触发后台静默自动同步至 GitHub
+  // 接收单件商品增量提交信号
   if (message.action === "TRIGGER_AUTO_SYNC") {
     const tabId = sender.tab ? sender.tab.id : null;
+    const singleProduct = message.product;
+    if (singleProduct && singleProduct.asin) {
+      incrementalQueue.push(singleProduct);
+      console.log("[AutoSync] 增量加入待同步队列:", singleProduct.asin);
+    }
     triggerAutoSync(tabId);
     sendResponse({ status: "sync_queued" });
   }
@@ -141,12 +146,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * 触发后台自动同步至 GitHub (带排队队列)
+ * 触发后台增量同步至 GitHub (带排队队列)
  */
 async function triggerAutoSync(sourceTabId) {
   if (isSyncing) {
     pendingSync = true;
-    console.log("[AutoSync] 当前正在同步中，已排队等待下一次提交");
+    console.log("[AutoSync] 当前正在提交中，队列排队等待下一次增量提交");
     return;
   }
 
@@ -154,9 +159,9 @@ async function triggerAutoSync(sourceTabId) {
   updateBadgeState("SYNC", "#f59e0b"); // 橙色提示同步中
 
   try {
-    const result = await executeGitHubSync();
+    const result = await executeGitHubIncrementalSync();
     if (result.success) {
-      console.log(`[AutoSync] 成功自动同步 ${result.count} 件商品至 GitHub 云端`);
+      console.log(`[AutoSync] 增量提交成功！云端当前累计总商品数: ${result.count}`);
       updateBadgeState("✓", "#10b981", 3500); // 绿色打勾
 
       // 通知前端网页更新 Toast 状态
@@ -168,7 +173,7 @@ async function triggerAutoSync(sourceTabId) {
         }).catch(() => {});
       }
     } else {
-      console.warn("[AutoSync] 自动同步跳过或未完成:", result.reason);
+      console.warn("[AutoSync] 增量同步未执行:", result.reason);
       updateBadgeState("", "");
       if (sourceTabId && result.isError) {
         chrome.tabs.sendMessage(sourceTabId, {
@@ -183,9 +188,9 @@ async function triggerAutoSync(sourceTabId) {
     updateBadgeState("ERR", "#ef4444", 3000);
   } finally {
     isSyncing = false;
-    if (pendingSync) {
+    if (pendingSync || incrementalQueue.length > 0) {
       pendingSync = false;
-      setTimeout(() => triggerAutoSync(sourceTabId), 600);
+      setTimeout(() => triggerAutoSync(sourceTabId), 500);
     }
   }
 }
@@ -204,20 +209,19 @@ function encodeBase64Utf8(str) {
 }
 
 /**
- * 执行 GitHub API 提交
+ * 核心：仅将当前采集的单个商品增量追加/更新至 GitHub 仓库（绝对不覆盖云端历史商品）
  */
-function executeGitHubSync() {
+function executeGitHubIncrementalSync() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(["amazon_products", "az_github_config"], async (storage) => {
-      // 优先从 storage 读取配置，若无则尝试从未跟踪的本地专属文件读取
+    chrome.storage.local.get(["az_github_config"], async (storage) => {
       let config = storage.az_github_config;
       if (!config || !config.token) {
         config = (await loadLocalFallbackConfig()) || DEFAULT_CONFIG;
       }
-      const products = storage.amazon_products || [];
 
       // 检查是否开启了自动同步（默认开启）
       if (config.autoSync === false) {
+        incrementalQueue.length = 0;
         return resolve({ success: false, reason: "用户已在设置中关闭自动同步" });
       }
 
@@ -226,14 +230,23 @@ function executeGitHubSync() {
         return resolve({ success: false, reason: "GitHub 凭证不完整" });
       }
 
+      if (incrementalQueue.length === 0) {
+        return resolve({ success: true, count: 0 });
+      }
+
+      // 提取队列中待同步的所有新商品批次，并清空队列
+      const batchItems = [...incrementalQueue];
+      incrementalQueue.length = 0;
+
       try {
         const filePath = "data/products.json";
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
-        // 1. 获取现有文件的 sha
+        // 1. 获取云端当前最新的产品数据与 sha (保证永远以云端最新数据为基准)
         let existingSha = null;
+        let cloudProducts = [];
         try {
-          const checkRes = await fetch(`${apiUrl}?ref=${branch}`, {
+          const checkRes = await fetch(`${apiUrl}?ref=${branch}&_t=${Date.now()}`, {
             headers: {
               "Accept": "application/vnd.github.v3+json",
               "Authorization": `Bearer ${token}`,
@@ -243,18 +256,48 @@ function executeGitHubSync() {
           if (checkRes.ok) {
             const fileInfo = await checkRes.json();
             existingSha = fileInfo.sha;
+            if (fileInfo.content) {
+              const binary = atob(fileInfo.content.replace(/\s/g, ""));
+              const bytes = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              const jsonText = new TextDecoder().decode(bytes);
+              const parsed = JSON.parse(jsonText);
+              if (Array.isArray(parsed)) {
+                cloudProducts = parsed;
+              }
+            }
           }
         } catch (e) {
-          console.warn("[AutoSync] 检查旧文件失败，尝试直接创建:", e);
+          console.warn("[AutoSync] 读取云端现有数据异常，将作为初始文件创建:", e);
         }
 
-        // 2. 构造 UTF-8 Base64 数据
-        const jsonString = JSON.stringify(products, null, 2);
+        // 2. 增量合并：只把当前采集的新商品追加/更新到云端列表前，完整保留云端所有历史！
+        batchItems.forEach((newProduct) => {
+          if (!newProduct || !newProduct.asin) return;
+          const existIdx = cloudProducts.findIndex((p) => p.asin === newProduct.asin);
+          if (existIdx > -1) {
+            // 已存在则更新价格与时间，移到最前
+            const old = cloudProducts[existIdx];
+            cloudProducts.splice(existIdx, 1);
+            cloudProducts.unshift({
+              ...old,
+              ...newProduct,
+              updatedAt: newProduct.collectedAt || new Date().toLocaleString("zh-CN", { hour12: false })
+            });
+          } else {
+            // 不存在则插入到云端最前面
+            cloudProducts.unshift(newProduct);
+          }
+        });
+
+        // 3. 构造 Base64 提交内容
+        const jsonString = JSON.stringify(cloudProducts, null, 2);
         const base64Content = encodeBase64Utf8(jsonString);
 
-        const nowStr = new Date().toLocaleString('zh-CN', { hour12: false });
+        const latestItem = batchItems[0];
+        const shortTitle = latestItem.title ? latestItem.title.slice(0, 35) : latestItem.asin;
         const payload = {
-          message: `Auto-sync Amazon Products (${products.length} items) - ${nowStr}`,
+          message: `Add: ${shortTitle} (Total Cloud: ${cloudProducts.length})`,
           content: base64Content,
           branch: branch
         };
@@ -262,7 +305,7 @@ function executeGitHubSync() {
           payload.sha = existingSha;
         }
 
-        // 3. 提交至 GitHub API
+        // 4. 提交至 GitHub API
         const putRes = await fetch(apiUrl, {
           method: "PUT",
           headers: {
@@ -275,14 +318,17 @@ function executeGitHubSync() {
         });
 
         if (putRes.ok) {
-          resolve({ success: true, count: products.length });
+          resolve({ success: true, count: cloudProducts.length });
         } else {
           const errData = await putRes.json();
           console.error("[AutoSync] GitHub API 响应错误:", errData);
+          // 提交失败时放回队列
+          incrementalQueue.unshift(...batchItems);
           resolve({ success: false, isError: true, reason: errData.message });
         }
       } catch (reqErr) {
         console.error("[AutoSync] 网络或执行异常:", reqErr);
+        incrementalQueue.unshift(...batchItems);
         resolve({ success: false, isError: true, reason: reqErr.message });
       }
     });
