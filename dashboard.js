@@ -413,6 +413,7 @@ function renderProducts() {
     const displayWeight = convertWeightToKg(item.weight);
     const shipping = calculateShippingCosts(item.dimensions, item.weight);
     const purchaseVal = item.purchasePrice || "";
+    const { l: lVal, w: wVal, h: hVal } = parseDimParts(item.dimensions);
 
     // Grid Card HTML
     gridHtml += `
@@ -434,6 +435,18 @@ function renderProducts() {
           <div class="grid-card-specs">
             <span class="spec-pill" title="尺寸: ${escapeHtml(displayDim)}${item.rawDimensions ? ` (原始: ${escapeHtml(item.rawDimensions)})` : ''}">📏 ${escapeHtml(displayDim)}</span>
             <span class="spec-pill" title="重量: ${escapeHtml(displayWeight)}${item.rawWeight ? ` (原始: ${escapeHtml(item.rawWeight)})` : ''}">⚖️ ${escapeHtml(displayWeight)}</span>
+          </div>
+          <!-- 长宽高三框输入行 (支持输入后实时动态计算) -->
+          <div class="grid-card-dim-edit" title="长宽高分别输入 (cm)，修改后即时自动重算运费">
+            <span class="dim-edit-label">📏 尺寸:</span>
+            <div class="dim-inputs-wrap card-dim-wrap">
+              <input type="number" step="any" min="0" class="dim-box-input editable-input" data-asin="${item.asin}" data-dim="l" value="${escapeHtml(lVal)}" placeholder="长" title="长 (cm)" />
+              <span class="dim-multiply">×</span>
+              <input type="number" step="any" min="0" class="dim-box-input editable-input" data-asin="${item.asin}" data-dim="w" value="${escapeHtml(wVal)}" placeholder="宽" title="宽 (cm)" />
+              <span class="dim-multiply">×</span>
+              <input type="number" step="any" min="0" class="dim-box-input editable-input" data-asin="${item.asin}" data-dim="h" value="${escapeHtml(hVal)}" placeholder="高" title="高 (cm)" />
+            </div>
+            <span style="font-size:10px;color:#94a3b8;">cm</span>
           </div>
           <!-- 采购价手动输入行 -->
           <div class="grid-card-purchase" title="手动输入该商品采购价格 (¥)">
@@ -474,8 +487,7 @@ function renderProducts() {
       </div>
     `;
 
-    // Table Row HTML（支持抓取价格、采购价、尺寸、实重直接编辑）
-    const dimValForInput = displayDim !== "暂无" ? displayDim : (item.dimensions || "");
+    // Table Row HTML（长宽高分别一个小框，输入后对应相关数据自动联动计算）
     const wtValForInput = displayWeight !== "暂无" ? displayWeight : (item.weight || "");
 
     tableHtml += `
@@ -501,9 +513,15 @@ function renderProducts() {
         <td>
           <input type="text" class="table-edit-input purchase-cell-input editable-input" data-asin="${item.asin}" data-field="purchasePrice" value="${escapeHtml(purchaseVal)}" placeholder="输入采购价" title="点击编辑采购价 (¥) (按回车或点击保存)" />
         </td>
-        <!-- 尺寸 (可直接编辑，自动联动重算) -->
+        <!-- 尺寸 (长宽高分别一个小框，输入后自动联动计算) -->
         <td>
-          <input type="text" class="table-edit-input dim-cell-input editable-input" data-asin="${item.asin}" data-field="dimensions" value="${escapeHtml(dimValForInput)}" placeholder="长x宽x高" title="点击编辑尺寸 (cm)，自动联动重算计费重与运费" />
+          <div class="dim-inputs-wrap" title="长×宽×高 (cm)，修改后即时自动重算运费">
+            <input type="number" step="any" min="0" class="dim-box-input editable-input" data-asin="${item.asin}" data-dim="l" value="${escapeHtml(lVal)}" placeholder="长" title="长 (cm)" />
+            <span class="dim-multiply">×</span>
+            <input type="number" step="any" min="0" class="dim-box-input editable-input" data-asin="${item.asin}" data-dim="w" value="${escapeHtml(wVal)}" placeholder="宽" title="宽 (cm)" />
+            <span class="dim-multiply">×</span>
+            <input type="number" step="any" min="0" class="dim-box-input editable-input" data-asin="${item.asin}" data-dim="h" value="${escapeHtml(hVal)}" placeholder="高" title="高 (cm)" />
+          </div>
         </td>
         <!-- 实重 (可直接编辑，自动联动重算) -->
         <td>
@@ -613,6 +631,30 @@ function deactivateSaveButton() {
  * 从页面 DOM 中收集所有编辑过的数据并回填至 allProducts
  */
 function collectEditsFromDOM(targetAsin = null) {
+  // 1. 处理长宽高三小框 (data-dim="l", data-dim="w", data-dim="h")
+  const handledAsins = new Set();
+  document.querySelectorAll("[data-dim='l']").forEach((lInp) => {
+    const asin = lInp.dataset.asin;
+    if (targetAsin && asin !== targetAsin) return;
+    if (handledAsins.has(asin)) return;
+    handledAsins.add(asin);
+
+    const container = lInp.closest("tr") || lInp.closest(".grid-card");
+    if (!container) return;
+
+    const lVal = container.querySelector('[data-dim="l"]')?.value.trim();
+    const wVal = container.querySelector('[data-dim="w"]')?.value.trim();
+    const hVal = container.querySelector('[data-dim="h"]')?.value.trim();
+
+    const item = allProducts.find((p) => p.asin === asin);
+    if (!item) return;
+
+    if (lVal && wVal && hVal && !isNaN(parseFloat(lVal)) && !isNaN(parseFloat(wVal)) && !isNaN(parseFloat(hVal))) {
+      item.dimensions = `${parseFloat(lVal)} x ${parseFloat(wVal)} x ${parseFloat(hVal)} cm`;
+    }
+  });
+
+  // 2. 处理常规输入框 (price, purchasePrice, weight)
   const selector = targetAsin ? `.editable-input[data-asin="${targetAsin}"]` : ".editable-input";
   const inputs = document.querySelectorAll(selector);
 
@@ -625,9 +667,7 @@ function collectEditsFromDOM(targetAsin = null) {
     if (!item) return;
 
     const rawVal = inp.value.trim();
-    if (field === "dimensions") {
-      item.dimensions = rawVal ? convertDimensionsToCm(rawVal) : "暂无";
-    } else if (field === "weight") {
+    if (field === "weight") {
       item.weight = rawVal ? convertWeightToKg(rawVal) : "暂无";
     } else if (field === "purchasePrice") {
       if (rawVal) {
@@ -645,7 +685,7 @@ function collectEditsFromDOM(targetAsin = null) {
     }
   });
 
-  // 统一更新受影响商品的头程运费
+  // 3. 统一更新受影响商品的头程运费
   allProducts.forEach((item) => {
     if (!targetAsin || item.asin === targetAsin) {
       item.shipping = calculateShippingCosts(item.dimensions, item.weight);
@@ -813,14 +853,25 @@ function bindCardAndTableEvents() {
       activateSaveButton(asin);
 
       const field = e.target.dataset.field;
-      if (field === "dimensions" || field === "weight") {
+      const dimType = e.target.dataset.dim;
+
+      // 如果修改了长、宽、高任意小框或实重，即时动态重新计算
+      if (dimType || field === "weight") {
+        // 1. 表格视图行内联动计算
         const row = e.target.closest("tr");
         if (row) {
-          const dimInp = row.querySelector('[data-field="dimensions"]');
+          const lInp = row.querySelector('[data-dim="l"]');
+          const wInp = row.querySelector('[data-dim="w"]');
+          const hInp = row.querySelector('[data-dim="h"]');
           const wtInp = row.querySelector('[data-field="weight"]');
-          const dimVal = dimInp ? dimInp.value.trim() : "";
+
+          const l = lInp ? parseFloat(lInp.value) : 0;
+          const w = wInp ? parseFloat(wInp.value) : 0;
+          const h = hInp ? parseFloat(hInp.value) : 0;
           const wtVal = wtInp ? wtInp.value.trim() : "";
-          const ship = calculateShippingCosts(dimVal, wtVal);
+
+          let dimStr = (l > 0 && w > 0 && h > 0) ? `${l} x ${w} x ${h} cm` : "";
+          const ship = calculateShippingCosts(dimStr, wtVal);
 
           const chgWtEl = document.getElementById(`chgWt_${asin}`);
           const airCostEl = document.getElementById(`airCost_${asin}`);
@@ -829,6 +880,30 @@ function bindCardAndTableEvents() {
           if (chgWtEl) chgWtEl.textContent = ship ? `${ship.chargeableWeight} kg` : "-";
           if (airCostEl) airCostEl.textContent = ship ? `¥${ship.airCost}` : "-";
           if (seaCostEl) seaCostEl.textContent = ship ? `¥${ship.seaCost}` : "-";
+        }
+
+        // 2. 网格卡片视图联动计算
+        const card = e.target.closest(".grid-card");
+        if (card) {
+          const lInp = card.querySelector('[data-dim="l"]');
+          const wInp = card.querySelector('[data-dim="w"]');
+          const hInp = card.querySelector('[data-dim="h"]');
+          const l = lInp ? parseFloat(lInp.value) : 0;
+          const w = wInp ? parseFloat(wInp.value) : 0;
+          const h = hInp ? parseFloat(hInp.value) : 0;
+          const prod = allProducts.find((p) => p.asin === asin);
+          const wtVal = prod ? prod.weight : "";
+
+          let dimStr = (l > 0 && w > 0 && h > 0) ? `${l} x ${w} x ${h} cm` : "";
+          const ship = calculateShippingCosts(dimStr, wtVal);
+          if (ship) {
+            const airEl = card.querySelector(".shipping-price.air");
+            const seaEl = card.querySelector(".shipping-price.sea");
+            const chgEl = card.querySelector(".shipping-chg-wt");
+            if (airEl) airEl.textContent = `¥${ship.airCost}`;
+            if (seaEl) seaEl.textContent = `¥${ship.seaCost}`;
+            if (chgEl) chgEl.textContent = `计重: ${ship.chargeableWeight}kg`;
+          }
         }
       }
     });
@@ -1622,6 +1697,21 @@ function convertDimensionsToCm(dimStr) {
   }
 
   return dimStr;
+}
+
+/**
+ * 从尺寸字符串中拆分出长、宽、高三个独立数值 (cm)
+ */
+function parseDimParts(dimStr) {
+  if (!dimStr || dimStr === "暂无" || dimStr === "-") return { l: "", w: "", h: "" };
+  const std = convertDimensionsToCm(dimStr);
+  const nums = std.replace(/(\d+),(\d+)/g, "$1.$2").match(/\d+(?:\.\d+)?/g);
+  if (!nums || nums.length < 3) return { l: "", w: "", h: "" };
+  return {
+    l: nums[0] || "",
+    w: nums[1] || "",
+    h: nums[2] || ""
+  };
 }
 
 /**
