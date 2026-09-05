@@ -395,81 +395,189 @@ function bindCardAndTableEvents() {
 }
 
 /**
- * 删除单个商品（支持从 GitHub 云端永久删除）
+ * 确保已获取用于云端写操作的 GitHub Token
+ */
+function ensureCloudToken() {
+  if (currentGithubConfig.token) {
+    return currentGithubConfig.token;
+  }
+
+  const input = prompt(
+    "🔐【GitHub 云端数据库权限验证】\n\n从 GitHub 云端数据库中永久删除商品需要您的管理权限。\n请粘贴您的 GitHub Personal Access Token (只需输入一次，本浏览器将安全记住)：",
+    ""
+  );
+
+  if (input && input.trim()) {
+    currentGithubConfig.token = input.trim();
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ az_github_config: currentGithubConfig });
+    } else {
+      localStorage.setItem("az_github_config", JSON.stringify(currentGithubConfig));
+    }
+    updatePagesUrlDisplay();
+    return currentGithubConfig.token;
+  }
+  return null;
+}
+
+/**
+ * 删除单个商品（直接从 GitHub 云端数据库 data/products.json 永久删除）
  */
 async function deleteProduct(asin) {
-  if (!confirm(`确定要彻底删除该商品 (ASIN: ${asin}) 吗？`)) return;
+  if (!confirm(`确定要从 GitHub 云端数据库彻底删除该商品 (ASIN: ${asin}) 吗？\n\n此操作将直接更新 GitHub 仓库，不可恢复！`)) {
+    return;
+  }
 
-  allProducts = allProducts.filter((item) => item.asin !== asin);
-  persistProducts(allProducts, () => {
-    updateSiteFilterOptions();
-    updateMetrics();
-    renderProducts();
-  });
+  // 1. 验证或获取 Token
+  const token = ensureCloudToken();
+  if (!token) {
+    alert("未提供有效 Token，已取消云端删除操作。");
+    return;
+  }
 
-  // 如果配置了 GitHub Token，直接通过 API 从 GitHub 仓库永久删除
-  const { owner, repo, branch = "main", token } = currentGithubConfig;
-  if (owner && repo && token) {
-    showToast("正在同步从 GitHub 云端删除...");
-    try {
-      const filePath = "data/products.json";
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
-      const checkRes = await fetch(`${apiUrl}?ref=${branch}&_t=${Date.now()}`, {
-        headers: {
-          "Accept": "application/vnd.github.v3+json",
-          "Authorization": `Bearer ${token}`,
-          "User-Agent": "Amazon-Product-Collector-MV3"
-        }
-      });
-      if (checkRes.ok) {
-        const fileInfo = await checkRes.json();
-        const base64Content = utf8ToBase64(JSON.stringify(allProducts, null, 2));
-        const putRes = await fetch(apiUrl, {
-          method: "PUT",
-          headers: {
-            "Accept": "application/vnd.github.v3+json",
-            "Authorization": `Bearer ${token}`,
-            "User-Agent": "Amazon-Product-Collector-MV3",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            message: `Delete: ASIN ${asin} (Total: ${allProducts.length})`,
-            content: base64Content,
-            branch: branch,
-            sha: fileInfo.sha
-          })
-        });
-        if (putRes.ok) {
-          showToast("✓ 已成功从云端永久删除该商品！");
-        } else {
-          showToast("本地已删除，云端同步失败，请检查 Token");
-        }
+  const { owner, repo, branch = "main" } = currentGithubConfig;
+  showToast("正在从 GitHub 云端数据库中删除...");
+
+  try {
+    const filePath = "data/products.json";
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+
+    // 2. 从 GitHub 读取最新文件及其 SHA
+    const checkRes = await fetch(`${apiUrl}?ref=${branch}&_t=${Date.now()}`, {
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `Bearer ${token}`,
+        "User-Agent": "Amazon-Product-Collector-MV3"
       }
-    } catch (e) {
-      showToast("云端删除异常: " + e.message);
+    });
+
+    if (!checkRes.ok) {
+      const err = await checkRes.json();
+      throw new Error(err.message || "无法连接 GitHub 仓库，请检查 Token 权限");
     }
-  } else {
-    showToast("已在本地删除（如需云端同步删除请在右上角配置 Token）");
+
+    const fileInfo = await checkRes.json();
+    let cloudList = [];
+    if (fileInfo.content) {
+      cloudList = JSON.parse(base64ToUtf8(fileInfo.content.replace(/\s/g, "")));
+    }
+
+    // 3. 过滤掉要删除的商品
+    const originalLength = cloudList.length;
+    cloudList = cloudList.filter((item) => item.asin !== asin);
+
+    if (cloudList.length === originalLength) {
+      showToast("云端未找到该商品，可能已被删除");
+    }
+
+    // 4. 提交回 GitHub
+    const base64Content = utf8ToBase64(JSON.stringify(cloudList, null, 2));
+    const putRes = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `Bearer ${token}`,
+        "User-Agent": "Amazon-Product-Collector-MV3",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `Delete product: ${asin} (Remaining: ${cloudList.length})`,
+        content: base64Content,
+        branch: branch,
+        sha: fileInfo.sha
+      })
+    });
+
+    if (putRes.ok) {
+      // 5. 更新本地当前列表并重绘
+      allProducts = cloudList;
+      persistProducts(allProducts, () => {
+        updateSiteFilterOptions();
+        updateMetrics();
+        renderProducts();
+      });
+      showToast(`✓ 已成功从 GitHub 数据库彻底删除 (ASIN: ${asin})！`);
+    } else {
+      const err = await putRes.json();
+      alert(`云端删除提交失败: ${err.message}`);
+    }
+  } catch (err) {
+    console.error("云端删除异常:", err);
+    alert(`云端删除失败: ${err.message}`);
   }
 }
 
 /**
- * 清空全部产品
+ * 清空全部产品（直接从 GitHub 云端数据库清空）
  */
-function handleClearAll() {
+async function handleClearAll() {
   if (allProducts.length === 0) {
-    showToast("产品库已为空，无需清空");
+    showToast("当前产品库已为空");
     return;
   }
 
-  if (confirm(`【警告】确定要清空本地产品库中的全部 ${allProducts.length} 件商品吗？\n此操作不可恢复！`)) {
-    persistProducts([], () => {
-      allProducts = [];
-      showToast("已清空全部本地数据");
-      updateSiteFilterOptions();
-      updateMetrics();
-      renderProducts();
+  if (!confirm(`【高危操作】确定要清空 GitHub 云端数据库中的全部 ${allProducts.length} 件商品吗？\n\n此操作将直接清空 GitHub 仓库，不可恢复！`)) {
+    return;
+  }
+
+  const token = ensureCloudToken();
+  if (!token) {
+    alert("未提供有效 Token，已取消清空操作。");
+    return;
+  }
+
+  const { owner, repo, branch = "main" } = currentGithubConfig;
+  showToast("正在清空 GitHub 云端数据库...");
+
+  try {
+    const filePath = "data/products.json";
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+
+    const checkRes = await fetch(`${apiUrl}?ref=${branch}&_t=${Date.now()}`, {
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `Bearer ${token}`,
+        "User-Agent": "Amazon-Product-Collector-MV3"
+      }
     });
+
+    if (!checkRes.ok) {
+      throw new Error("无法连接 GitHub 仓库，请检查 Token");
+    }
+
+    const fileInfo = await checkRes.json();
+    const base64Content = utf8ToBase64("[]");
+
+    const putRes = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `Bearer ${token}`,
+        "User-Agent": "Amazon-Product-Collector-MV3",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: "Clear all products from vault",
+        content: base64Content,
+        branch: branch,
+        sha: fileInfo.sha
+      })
+    });
+
+    if (putRes.ok) {
+      allProducts = [];
+      persistProducts([], () => {
+        updateSiteFilterOptions();
+        updateMetrics();
+        renderProducts();
+      });
+      showToast("✓ 已成功清空 GitHub 云端数据库！");
+    } else {
+      const err = await putRes.json();
+      alert(`清空失败: ${err.message}`);
+    }
+  } catch (err) {
+    alert(`清空异常: ${err.message}`);
   }
 }
 
@@ -673,6 +781,29 @@ function toggleTokenVisibility() {
  * 加载已保存的 GitHub 配置
  */
 function loadGithubConfig() {
+  // 自动从当前 GitHub Pages 网址推导 owner 和 repo
+  if (window.location.hostname.endsWith(".github.io")) {
+    const parts = window.location.hostname.split(".");
+    currentGithubConfig.owner = parts[0];
+    const pathParts = window.location.pathname.split("/").filter(Boolean);
+    if (pathParts.length > 0) {
+      currentGithubConfig.repo = pathParts[0];
+    }
+  }
+
+  // 检查 URL 中是否有授权 token 参数 (例如访问网址带有 #token=ghp_xxx)
+  if (window.location.hash.startsWith("#token=")) {
+    const paramToken = window.location.hash.replace("#token=", "").trim();
+    if (paramToken) {
+      currentGithubConfig.token = paramToken;
+      localStorage.setItem("az_github_config", JSON.stringify(currentGithubConfig));
+      try {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      } catch (e) {}
+      setTimeout(() => showToast("✓ 已自动激活 GitHub 云端管理删除权限！"), 600);
+    }
+  }
+
   const readConfig = (cfg) => {
     if (cfg) {
       currentGithubConfig = { ...currentGithubConfig, ...cfg };
