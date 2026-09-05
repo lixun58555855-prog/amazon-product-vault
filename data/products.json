@@ -1,8 +1,13 @@
 [
   {
-    "asin": "B08N5WRWNW",
-    "title": "Test Product",
-    "price": ".99",
-    "collectedAt": "2026-09-05T15:31:58.941Z"
+    "asin": "B0HCN25FSQ",
+    "collectedAt": "2026/9/5 23:43:14",
+    "collectedTimestamp": 1788622994849,
+    "currency": "USD",
+    "imageUrl": "https://m.media-amazon.com/images/I/61atKiRFAGL._AC_SL1500_.jpg",
+    "price": "GBP9.61",
+    "site": "amazon.com",
+    "title": "Yuzhuo 2 件金属树叶墙壁装饰树枝叶墙艺术",
+    "url": "https://www.amazon.com/dp/B0HCN25FSQ"
   }
 ]
