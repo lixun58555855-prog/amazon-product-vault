@@ -799,6 +799,17 @@ body {
   font-weight: 700;
 }
 
+.table-edit-input.weight-cell-input {
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.table-edit-input.weight-cell-input::-webkit-outer-spin-button,
+.table-edit-input.weight-cell-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* 长宽高三框组合容器 */
 .dim-inputs-wrap {
   display: inline-flex;

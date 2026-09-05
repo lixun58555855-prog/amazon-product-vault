@@ -487,8 +487,8 @@ function renderProducts() {
       </div>
     `;
 
-    // Table Row HTML（长宽高分别一个小框，输入后对应相关数据自动联动计算）
-    const wtValForInput = displayWeight !== "暂无" ? displayWeight : (item.weight || "");
+    // Table Row HTML（长宽高分别一个小框，实重纯数字输入，输入后对应相关数据自动联动计算）
+    const wtValForInput = extractWeightKgNumber(item.weight);
 
     tableHtml += `
       <tr data-asin="${item.asin}">
@@ -523,13 +523,13 @@ function renderProducts() {
             <input type="number" step="any" min="0" class="dim-box-input editable-input" data-asin="${item.asin}" data-dim="h" value="${escapeHtml(hVal)}" placeholder="高" title="高 (cm)" />
           </div>
         </td>
-        <!-- 实重 (可直接编辑，自动联动重算) -->
+        <!-- 实重 (纯数字展示与输入，绝无字母，修改后自动联动重算) -->
         <td>
-          <input type="text" class="table-edit-input weight-cell-input editable-input" data-asin="${item.asin}" data-field="weight" value="${escapeHtml(wtValForInput)}" placeholder="重量" title="点击编辑实重 (kg)，自动联动重算计费重与运费" />
+          <input type="number" step="any" min="0" class="table-edit-input weight-cell-input editable-input" data-asin="${item.asin}" data-field="weight" value="${escapeHtml(wtValForInput)}" placeholder="0.00" title="实重 (kg) - 仅输入纯数字，修改后即时自动重算运费" />
         </td>
-        <!-- 计费重 (动态联动更新) -->
+        <!-- 计费重 (动态联动更新，纯数字展示) -->
         <td>
-          <span class="table-chg-wt" id="chgWt_${item.asin}" title="体积重: ${shipping ? shipping.volWeight : '-'}kg, 实重: ${shipping ? shipping.actualWeight : '-'}kg (${shipping && shipping.isVolumetric ? '体积重较大' : '实重较大'})">${shipping ? `${shipping.chargeableWeight} kg` : '-'}</span>
+          <span class="table-chg-wt" id="chgWt_${item.asin}" title="体积重: ${shipping ? shipping.volWeight : '-'}kg, 实重: ${shipping ? shipping.actualWeight : '-'}kg (${shipping && shipping.isVolumetric ? '体积重较大' : '实重较大'})">${shipping ? shipping.chargeableWeight : '-'}</span>
         </td>
         <!-- ✈️ 空运头程 (动态联动更新) -->
         <td>
@@ -538,9 +538,6 @@ function renderProducts() {
         <!-- 🚢 海运头程 (动态联动更新) -->
         <td>
           <span class="table-sea-cost" id="seaCost_${item.asin}" title="计费重 ${shipping ? shipping.chargeableWeight : 0}kg × 15元">${shipping ? `¥${shipping.seaCost}` : '-'}</span>
-        </td>
-        <td>
-          <span class="tag-site-pill">${escapeHtml(item.site || "Amazon")}</span>
         </td>
         <td>
           <span class="table-time">${displayTime}</span>
@@ -877,7 +874,12 @@ function bindCardAndTableEvents() {
           const airCostEl = document.getElementById(`airCost_${asin}`);
           const seaCostEl = document.getElementById(`seaCost_${asin}`);
 
-          if (chgWtEl) chgWtEl.textContent = ship ? `${ship.chargeableWeight} kg` : "-";
+          if (chgWtEl) {
+            chgWtEl.textContent = ship ? ship.chargeableWeight : "-";
+            chgWtEl.title = ship
+              ? `体积重: ${ship.volWeight}kg, 实重: ${ship.actualWeight}kg (${ship.isVolumetric ? '体积重较大' : '实重较大'})`
+              : "-";
+          }
           if (airCostEl) airCostEl.textContent = ship ? `¥${ship.airCost}` : "-";
           if (seaCostEl) seaCostEl.textContent = ship ? `¥${ship.seaCost}` : "-";
         }
@@ -1118,8 +1120,8 @@ function exportToCsv() {
   const headers = ["ASIN", "商品标题", "抓取价格", "采购价 (¥)", "币种", "尺寸 (cm)", "实重 (kg)", "体积重 (kg)", "计费重 (kg)", "空运头程 (元)", "海运头程 (元)", "站点", "商品直达链接", "高清大图链接", "采集时间", "最新更新时间"];
   const rows = allProducts.map((p) => {
     const dim = convertDimensionsToCm(p.dimensions);
-    const wt = convertWeightToKg(p.weight);
-    const ship = calculateShippingCosts(dim, wt);
+    const wtNum = extractWeightKgNumber(p.weight);
+    const ship = calculateShippingCosts(dim, p.weight);
     return [
       p.asin || "",
       `"${(p.title || "").replace(/"/g, '""')}"`,
@@ -1127,7 +1129,7 @@ function exportToCsv() {
       `"${(p.purchasePrice || "").replace(/"/g, '""')}"`,
       `"${(p.currency || "").replace(/"/g, '""')}"`,
       `"${(dim || "").replace(/"/g, '""')}"`,
-      `"${(wt || "").replace(/"/g, '""')}"`,
+      wtNum,
       ship ? ship.volWeight : "",
       ship ? ship.chargeableWeight : "",
       ship ? ship.airCost : "",
@@ -1712,6 +1714,17 @@ function parseDimParts(dimStr) {
     w: nums[1] || "",
     h: nums[2] || ""
   };
+}
+
+/**
+ * 提取纯数字重量数值（将任意重量统一换算为 kg 对应纯数字，不含任何字母与单位）
+ */
+function extractWeightKgNumber(weightStr) {
+  if (!weightStr || weightStr === "暂无" || weightStr === "-") return "";
+  const std = convertWeightToKg(weightStr);
+  if (!std || std === "暂无" || std === "-") return "";
+  const match = std.replace(/(\d+),(\d+)/g, "$1.$2").match(/\d+(?:\.\d+)?/);
+  return match ? match[0] : "";
 }
 
 /**
