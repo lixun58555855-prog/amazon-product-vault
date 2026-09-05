@@ -19,6 +19,11 @@ if (!window.__AMAZON_COLLECTOR_INITIALIZED__) {
       });
       return true; // 异步响应
     }
+
+    // 接收后台自动同步完成的通知
+    if (request.action === "AUTO_SYNC_STATUS") {
+      handleAutoSyncToastUpdate(request);
+    }
   });
 
   console.log("[Amazon Collector] 内容脚本初始化完毕，就绪等待采集");
@@ -43,7 +48,7 @@ async function executeProductCollection() {
     // 保存至 chrome.storage.local
     const saveResult = await saveProductToStorage(product);
 
-    // 弹出成功或更新的页面 Toast
+    // 弹出成功或更新的页面 Toast（默认附带正在同步云端提示）
     showWebToast({
       success: true,
       isUpdate: saveResult.isUpdate,
@@ -51,8 +56,12 @@ async function executeProductCollection() {
       message: `${product.title.slice(0, 45)}...`,
       price: product.price,
       asin: product.asin,
-      imageUrl: product.imageUrl
+      imageUrl: product.imageUrl,
+      syncing: true
     });
+
+    // 核心：立即触发后台全自动静默推送到 GitHub 云端
+    chrome.runtime.sendMessage({ action: "TRIGGER_AUTO_SYNC", asin: product.asin });
 
     return { success: true, product, isUpdate: saveResult.isUpdate };
   } catch (error) {
@@ -377,6 +386,16 @@ function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl
         font-weight: 600;
         border: 1px solid ${themeColor}60;
       }
+      .az-sync-badge {
+        background: rgba(56, 189, 248, 0.2);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.4);
+      }
+      .az-sync-badge.done {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border-color: rgba(16, 185, 129, 0.5);
+      }
       .az-toast-desc {
         font-size: 12px;
         color: #94a3b8;
@@ -414,6 +433,7 @@ function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl
       <div class="az-toast-header">
         <span class="az-toast-title">${title}</span>
         <span class="az-toast-badge">${badgeText}</span>
+        <span id="az-toast-sync-badge" class="az-toast-badge az-sync-badge">☁️ 云端同步中...</span>
       </div>
       <div class="az-toast-desc" title="${message}">${message}</div>
       ${price ? `
@@ -436,10 +456,26 @@ function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl
 
   if (closeBtn) closeBtn.onclick = dismissToast;
 
-  // 3.8秒后自动淡出关闭
+  // 4.5秒后自动淡出关闭
   setTimeout(() => {
     if (document.body.contains(container)) {
       dismissToast();
     }
-  }, 3800);
+  }, 4500);
+}
+
+/**
+ * 接收后台自动同步回执并更新 Toast 徽章
+ */
+function handleAutoSyncToastUpdate(response) {
+  const syncBadge = document.getElementById('az-toast-sync-badge');
+  if (!syncBadge) return;
+
+  if (response.success) {
+    syncBadge.textContent = '☁️ 已同步云端';
+    syncBadge.classList.add('done');
+  } else if (response.error) {
+    syncBadge.textContent = '☁️ 同步稍后重试';
+    syncBadge.style.color = '#f59e0b';
+  }
 }

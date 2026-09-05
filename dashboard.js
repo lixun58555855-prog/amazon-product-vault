@@ -634,20 +634,43 @@ function loadGithubConfig() {
       document.getElementById("ghRepo").value = currentGithubConfig.repo || "";
       document.getElementById("ghBranch").value = currentGithubConfig.branch || "main";
       document.getElementById("ghToken").value = currentGithubConfig.token || "";
+      const autoSyncEl = document.getElementById("ghAutoSync");
+      if (autoSyncEl) {
+        autoSyncEl.checked = currentGithubConfig.autoSync !== false;
+      }
 
       updatePagesUrlDisplay();
     }
   };
 
+  const tryLocalFallback = () => {
+    fetch("config.local.json")
+      .then((r) => r.json())
+      .then((localCfg) => {
+        readConfig(localCfg);
+      })
+      .catch(() => {});
+  };
+
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(["az_github_config"], (res) => {
-      readConfig(res.az_github_config);
+      if (res.az_github_config && res.az_github_config.token) {
+        readConfig(res.az_github_config);
+      } else {
+        tryLocalFallback();
+      }
     });
   } else {
     try {
       const saved = JSON.parse(localStorage.getItem("az_github_config") || "{}");
-      readConfig(saved);
-    } catch (e) {}
+      if (saved && saved.token) {
+        readConfig(saved);
+      } else {
+        tryLocalFallback();
+      }
+    } catch (e) {
+      tryLocalFallback();
+    }
   }
 }
 
@@ -678,13 +701,15 @@ function saveGithubConfig() {
   const repo = document.getElementById("ghRepo").value.trim();
   const branch = document.getElementById("ghBranch").value.trim() || "main";
   const token = document.getElementById("ghToken").value.trim();
+  const autoSyncEl = document.getElementById("ghAutoSync");
+  const autoSync = autoSyncEl ? autoSyncEl.checked : true;
 
   if (!owner || !repo) {
     alert("请填写完整的 GitHub 用户名与仓库名称！");
     return;
   }
 
-  currentGithubConfig = { owner, repo, branch, token };
+  currentGithubConfig = { owner, repo, branch, token, autoSync };
 
   const onSaved = () => {
     updatePagesUrlDisplay();
