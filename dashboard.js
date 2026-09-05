@@ -9,13 +9,121 @@
  * 6. ASIN 与链接快捷复制
  */
 
+const VAULT_ACCESS_PASSWORD = "888";
 let allProducts = [];
 let currentViewMode = localStorage.getItem("az_vault_view_mode") || "grid"; // 'grid' or 'table'
 
 document.addEventListener("DOMContentLoaded", () => {
   initUI();
-  loadProducts();
+  initVaultLock();
 });
+
+/**
+ * 访问安全门禁与密码验证（方案2：密码 888 保护）
+ */
+function initVaultLock() {
+  const overlay = document.getElementById("vaultLockOverlay");
+  const inputEl = document.getElementById("vaultPasswordInput");
+  const btnUnlock = document.getElementById("btnUnlockVault");
+  const errorEl = document.getElementById("lockErrorMsg");
+  const btnRelock = document.getElementById("btnRelock");
+
+  // 判断是否为网页端环境 (GitHub Pages、http/https 或 index.html)
+  const isWebEnvironment = window.location.protocol.startsWith("http");
+  const isIndexHtml = window.location.pathname.endsWith("index.html");
+  const shouldEnforceLock = isWebEnvironment || isIndexHtml;
+
+  // 如果是在本地插件扩展环境 (chrome-extension://) 且不是在线网页，直接放行
+  if (!shouldEnforceLock) {
+    if (overlay) overlay.style.display = "none";
+    loadProducts();
+    return;
+  }
+
+  // 网页端环境：检查当前会话 (sessionStorage) 是否已经解锁
+  const isUnlocked = sessionStorage.getItem("az_vault_unlocked") === "true";
+
+  if (isUnlocked) {
+    if (overlay) overlay.style.display = "none";
+    loadProducts();
+  } else {
+    // 强制显示锁屏全屏遮罩，且不加载任何产品数据
+    if (overlay) {
+      overlay.style.display = "flex";
+      overlay.style.opacity = "1";
+    }
+    if (inputEl) {
+      setTimeout(() => inputEl.focus(), 150);
+    }
+  }
+
+  // 执行解锁验证
+  function doUnlock() {
+    if (!inputEl) return;
+    const pwd = inputEl.value.trim();
+    if (pwd === VAULT_ACCESS_PASSWORD) {
+      sessionStorage.setItem("az_vault_unlocked", "true");
+      if (errorEl) errorEl.style.display = "none";
+
+      if (overlay) {
+        overlay.style.transition = "opacity 0.25s ease";
+        overlay.style.opacity = "0";
+        setTimeout(() => {
+          overlay.style.display = "none";
+        }, 250);
+      }
+
+      showToast("✓ 验证成功，欢迎访问！");
+      // 验证通过后再从云端加载并渲染数据
+      loadProducts();
+    } else {
+      if (errorEl) {
+        errorEl.style.display = "block";
+        errorEl.textContent = "⚠️ 密码错误，请重新输入！";
+        errorEl.classList.remove("shake-active");
+        void errorEl.offsetWidth; // 触发 reflow 重新播放抖动动画
+        errorEl.classList.add("shake-active");
+      }
+      inputEl.value = "";
+      inputEl.focus();
+    }
+  }
+
+  if (btnUnlock) {
+    btnUnlock.addEventListener("click", doUnlock);
+  }
+
+  if (inputEl) {
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        doUnlock();
+      }
+    });
+  }
+
+  // 重新锁定网页按钮
+  if (btnRelock) {
+    btnRelock.addEventListener("click", () => {
+      sessionStorage.removeItem("az_vault_unlocked");
+      // 清空当前页面商品和数据展示，防止窥屏
+      allProducts = [];
+      renderProducts();
+      updateMetrics();
+
+      if (overlay) {
+        overlay.style.display = "flex";
+        overlay.style.opacity = "1";
+      }
+      if (inputEl) {
+        inputEl.value = "";
+        setTimeout(() => inputEl.focus(), 150);
+      }
+      if (errorEl) errorEl.style.display = "none";
+      showToast("🔒 页面已重新锁定");
+    });
+  }
+}
 
 /**
  * 初始化界面事件监听

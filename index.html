@@ -7,6 +7,22 @@
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
+  <!-- 访问安全密码锁遮罩 (密码: 888) -->
+  <div id="vaultLockOverlay" class="lock-overlay">
+    <div class="lock-card">
+      <div class="lock-icon">🔒</div>
+      <h2 class="lock-title">亚马逊云端产品库</h2>
+      <p class="lock-desc">本页面已启用安全防护，请输入访问密码以进入：</p>
+      
+      <div class="lock-form">
+        <input type="password" id="vaultPasswordInput" class="lock-input" placeholder="请输入访问密码" autocomplete="off" autofocus>
+        <button type="button" id="btnUnlockVault" class="btn btn-primary-github lock-btn">🔑 解锁进入</button>
+      </div>
+      
+      <div id="lockErrorMsg" class="lock-error" style="display: none;"></div>
+    </div>
+  </div>
+
   <div class="app-layout">
     <!-- 顶部导航栏 -->
     <header class="top-nav">
@@ -19,6 +35,11 @@
       </div>
 
       <div class="nav-actions">
+        <!-- 重新锁定按钮 -->
+        <button id="btnRelock" class="btn btn-secondary" title="立即重新锁定页面">
+          🔒 锁定
+        </button>
+
         <!-- GitHub 云端同步区 -->
         <button id="btnSyncToGithub" class="btn btn-primary-github" title="将当前数据提交保存至 GitHub 仓库">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
