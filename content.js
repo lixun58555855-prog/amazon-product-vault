@@ -59,6 +59,7 @@ async function executeProductCollection() {
       imageUrl: product.imageUrl,
       dimensions: product.dimensions,
       weight: product.weight,
+      shipping: product.shipping,
       syncing: true
     });
 
@@ -227,6 +228,9 @@ function extractAmazonProductDetails() {
   const dimensions = convertDimensionsToCm(rawDim);
   const weight = convertWeightToKg(rawWt);
 
+  // 7. 自动计算头程物流成本（空运: 计费重*66元, 海运: 计费重*15元）
+  const shipping = calculateShippingCosts(dimensions, weight);
+
   // 规范化无污染的商品直达短链接
   const cleanUrl = `https://${hostname}/dp/${asin}`;
 
@@ -244,6 +248,7 @@ function extractAmazonProductDetails() {
     weight,
     rawDimensions: rawDim,
     rawWeight: rawWt,
+    shipping,
     url: cleanUrl,
     collectedAt: formatTime,
     collectedTimestamp: now.getTime()
@@ -431,6 +436,55 @@ function convertWeightToKg(weightStr) {
 }
 
 /**
+ * 头程物流成本计算引擎
+ * 规则：
+ * 1. 体积重 = 长(cm) * 宽(cm) * 高(cm) / 6000
+ * 2. 计费重 = max(体积重, 实重)
+ * 3. 空运成本 = 计费重 * 66 元
+ * 4. 海运成本 = 计费重 * 15 元
+ */
+function calculateShippingCosts(dimStr, weightStr, airRate = 66, seaRate = 15) {
+  if (!dimStr || !weightStr || dimStr === "暂无" || weightStr === "暂无" || dimStr === "-" || weightStr === "-") {
+    return null;
+  }
+
+  const stdDim = convertDimensionsToCm(dimStr);
+  const dimMatches = stdDim.match(/\d+(?:\.\d+)?/g);
+  if (!dimMatches || dimMatches.length < 3) {
+    return null;
+  }
+
+  const [l, w, h] = dimMatches.slice(0, 3).map(Number);
+  if (isNaN(l) || isNaN(w) || isNaN(h) || l <= 0 || w <= 0 || h <= 0) {
+    return null;
+  }
+
+  const volWeight = (l * w * h) / 6000;
+
+  const stdWeight = convertWeightToKg(weightStr);
+  const wtMatch = stdWeight.match(/\d+(?:\.\d+)?/);
+  if (!wtMatch) return null;
+
+  const actualWeight = parseFloat(wtMatch[1]);
+  if (isNaN(actualWeight) || actualWeight <= 0) {
+    return null;
+  }
+
+  const chargeableWeight = Math.max(volWeight, actualWeight);
+  const airCost = chargeableWeight * airRate;
+  const seaCost = chargeableWeight * seaRate;
+
+  return {
+    volWeight: Math.round(volWeight * 100) / 100,
+    actualWeight: Math.round(actualWeight * 100) / 100,
+    chargeableWeight: Math.round(chargeableWeight * 100) / 100,
+    airCost: Math.round(airCost * 100) / 100,
+    seaCost: Math.round(seaCost * 100) / 100,
+    isVolumetric: volWeight > actualWeight
+  };
+}
+
+/**
  * 辅助：根据价格文本或站点推测货币符号
  */
 function extractCurrency(priceStr, site) {
@@ -499,7 +553,7 @@ function saveProductToStorage(product) {
 /**
  * 网页原生浮动 Toast 弹窗反馈组件
  */
-function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl, dimensions, weight }) {
+function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl, dimensions, weight, shipping }) {
   // 清理已有浮窗
   const oldToast = document.getElementById('__az_collector_toast_container__');
   if (oldToast) oldToast.remove();
@@ -637,6 +691,13 @@ function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl
         <div class="az-toast-specs" style="font-size:11px;color:#94a3b8;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;">
           ${dimensions && dimensions !== '暂无' ? `<span>📏 ${dimensions}</span>` : ''}
           ${weight && weight !== '暂无' ? `<span>⚖️ ${weight}</span>` : ''}
+        </div>
+      ` : ''}
+      ${shipping ? `
+        <div class="az-toast-shipping" style="font-size:11px;background:rgba(15,23,42,0.7);border:1px solid rgba(56,189,248,0.3);border-radius:6px;padding:4px 8px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;">
+          <span>✈️ 空运: <strong style="color:#38bdf8;">¥${shipping.airCost}</strong></span>
+          <span>🚢 海运: <strong style="color:#10b981;">¥${shipping.seaCost}</strong></span>
+          <span style="color:#94a3b8;font-size:10px;">计费重: ${shipping.chargeableWeight}kg</span>
         </div>
       ` : ''}
     </div>

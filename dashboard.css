@@ -423,6 +423,71 @@ body {
   display: block;
 }
 
+/* 卡片中的头程运费预估模块 */
+.grid-card-shipping {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+}
+
+.shipping-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.shipping-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.shipping-price {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.shipping-price.air {
+  color: #38bdf8;
+}
+
+.shipping-price.sea {
+  color: #10b981;
+}
+
+.shipping-chg-wt {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: #1e293b;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.table-air-cost {
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.table-sea-cost {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.table-chg-wt {
+  color: #f1f5f9;
+  font-weight: 600;
+  font-family: monospace;
+  font-size: 12px;
+}
+
 .grid-card-footer {
   margin-top: auto;
   padding-top: 12px;

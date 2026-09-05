@@ -124,6 +124,7 @@ function renderProducts() {
     const defaultImg = "icons/icon48.png";
     const displayImg = item.imageUrl || defaultImg;
     const displayTime = item.updatedAt ? `${item.updatedAt} (更新)` : (item.collectedAt || "未知时间");
+    const shipping = calculateShippingCosts(item.dimensions, item.weight);
 
     html += `
       <div class="product-card" data-asin="${item.asin}">
@@ -145,6 +146,13 @@ function renderProducts() {
             <span title="尺寸: ${escapeHtml(convertDimensionsToCm(item.dimensions))}${item.rawDimensions ? ` (原始: ${escapeHtml(item.rawDimensions)})` : ''}">📏 ${escapeHtml(convertDimensionsToCm(item.dimensions))}</span>
             <span title="重量: ${escapeHtml(convertWeightToKg(item.weight))}${item.rawWeight ? ` (原始: ${escapeHtml(item.rawWeight)})` : ''}">⚖️ ${escapeHtml(convertWeightToKg(item.weight))}</span>
           </div>
+          ${shipping ? `
+            <div class="card-shipping-row" style="font-size:11px;background:rgba(15,23,42,0.6);border:1px solid #334155;border-radius:6px;padding:3px 6px;margin:2px 0 4px 0;display:flex;justify-content:space-between;align-items:center;">
+              <span>✈️ 空: <strong style="color:#38bdf8;">¥${shipping.airCost}</strong></span>
+              <span>🚢 海: <strong style="color:#10b981;">¥${shipping.seaCost}</strong></span>
+              <span style="color:#94a3b8;font-size:10px;">计重: ${shipping.chargeableWeight}kg</span>
+            </div>
+          ` : ''}
           <div class="card-footer-row">
             <span>${displayTime}</span>
             <button class="btn-card-delete" data-asin="${item.asin}" title="仅从本地插件视窗移除（云端不受任何影响）">
@@ -259,20 +267,29 @@ function exportProductsToCsv() {
     return;
   }
 
-  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (cm)", "重量 (kg)", "站点", "商品链接", "主图链接", "采集时间", "更新时间"];
-  const rows = allProducts.map((p) => [
-    p.asin || "",
-    `"${(p.title || "").replace(/"/g, '""')}"`,
-    `"${(p.price || "").replace(/"/g, '""')}"`,
-    `"${(p.currency || "").replace(/"/g, '""')}"`,
-    `"${(convertDimensionsToCm(p.dimensions) || "").replace(/"/g, '""')}"`,
-    `"${(convertWeightToKg(p.weight) || "").replace(/"/g, '""')}"`,
-    p.site || "",
-    p.url || "",
-    p.imageUrl || "",
-    p.collectedAt || "",
-    p.updatedAt || ""
-  ]);
+  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (cm)", "实重 (kg)", "体积重 (kg)", "计费重 (kg)", "空运头程 (元)", "海运头程 (元)", "站点", "商品链接", "主图链接", "采集时间", "更新时间"];
+  const rows = allProducts.map((p) => {
+    const dim = convertDimensionsToCm(p.dimensions);
+    const wt = convertWeightToKg(p.weight);
+    const ship = calculateShippingCosts(dim, wt);
+    return [
+      p.asin || "",
+      `"${(p.title || "").replace(/"/g, '""')}"`,
+      `"${(p.price || "").replace(/"/g, '""')}"`,
+      `"${(p.currency || "").replace(/"/g, '""')}"`,
+      `"${(dim || "").replace(/"/g, '""')}"`,
+      `"${(wt || "").replace(/"/g, '""')}"`,
+      ship ? ship.volWeight : "",
+      ship ? ship.chargeableWeight : "",
+      ship ? ship.airCost : "",
+      ship ? ship.seaCost : "",
+      p.site || "",
+      p.url || "",
+      p.imageUrl || "",
+      p.collectedAt || "",
+      p.updatedAt || ""
+    ];
+  });
 
   const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
 
@@ -468,4 +485,53 @@ function convertWeightToKg(weightStr) {
   }
 
   return `${formattedKg} kg`;
+}
+
+/**
+ * 头程物流成本计算引擎
+ * 规则：
+ * 1. 体积重 = 长(cm) * 宽(cm) * 高(cm) / 6000
+ * 2. 计费重 = max(体积重, 实重)
+ * 3. 空运成本 = 计费重 * 66 元
+ * 4. 海运成本 = 计费重 * 15 元
+ */
+function calculateShippingCosts(dimStr, weightStr, airRate = 66, seaRate = 15) {
+  if (!dimStr || !weightStr || dimStr === "暂无" || weightStr === "暂无" || dimStr === "-" || weightStr === "-") {
+    return null;
+  }
+
+  const stdDim = convertDimensionsToCm(dimStr);
+  const dimMatches = stdDim.match(/\d+(?:\.\d+)?/g);
+  if (!dimMatches || dimMatches.length < 3) {
+    return null;
+  }
+
+  const [l, w, h] = dimMatches.slice(0, 3).map(Number);
+  if (isNaN(l) || isNaN(w) || isNaN(h) || l <= 0 || w <= 0 || h <= 0) {
+    return null;
+  }
+
+  const volWeight = (l * w * h) / 6000;
+
+  const stdWeight = convertWeightToKg(weightStr);
+  const wtMatch = stdWeight.match(/\d+(?:\.\d+)?/);
+  if (!wtMatch) return null;
+
+  const actualWeight = parseFloat(wtMatch[1]);
+  if (isNaN(actualWeight) || actualWeight <= 0) {
+    return null;
+  }
+
+  const chargeableWeight = Math.max(volWeight, actualWeight);
+  const airCost = chargeableWeight * airRate;
+  const seaCost = chargeableWeight * seaRate;
+
+  return {
+    volWeight: Math.round(volWeight * 100) / 100,
+    actualWeight: Math.round(actualWeight * 100) / 100,
+    chargeableWeight: Math.round(chargeableWeight * 100) / 100,
+    airCost: Math.round(airCost * 100) / 100,
+    seaCost: Math.round(seaCost * 100) / 100,
+    isVolumetric: volWeight > actualWeight
+  };
 }
