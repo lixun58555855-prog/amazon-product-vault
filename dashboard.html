@@ -227,6 +227,27 @@
         </div>
       </div>
     </div>
+
+    <!-- 商品高清大图预览灯箱 (Lightbox) -->
+    <div id="imageLightboxModal" class="lightbox-overlay" style="display:none;">
+      <div class="lightbox-backdrop"></div>
+      <div class="lightbox-content">
+        <button id="btnCloseLightbox" class="lightbox-close" title="关闭大图 (Esc)">✕</button>
+        <div class="lightbox-img-wrap">
+          <img id="lightboxImage" src="" alt="商品高清大图" />
+        </div>
+        <div class="lightbox-caption">
+          <div class="lightbox-title-wrap">
+            <span id="lightboxAsin" class="lightbox-asin"></span>
+            <span id="lightboxTitle" class="lightbox-title"></span>
+          </div>
+          <a id="lightboxOrigLink" href="#" target="_blank" class="lightbox-orig-btn" title="在新标签页查看原始最高清大图 (1500px)">
+            <span>查看超清原图</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="dashboard.js"></script>

@@ -186,6 +186,33 @@ function initUI() {
     if (e.target.id === "githubModal") closeGithubModal();
   });
 
+  // 图片高清大图预览灯箱关闭事件
+  const btnCloseLightbox = document.getElementById("btnCloseLightbox");
+  if (btnCloseLightbox) btnCloseLightbox.addEventListener("click", closeImageLightbox);
+
+  const lightboxModal = document.getElementById("imageLightboxModal");
+  if (lightboxModal) {
+    lightboxModal.addEventListener("click", (e) => {
+      if (e.target.classList.contains("lightbox-backdrop") || e.target.id === "imageLightboxModal") {
+        closeImageLightbox();
+      }
+    });
+  }
+
+  // 全局 ESC 快捷键关闭灯箱与模态弹窗
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const lb = document.getElementById("imageLightboxModal");
+      if (lb && lb.style.display !== "none") {
+        closeImageLightbox();
+      }
+      const gh = document.getElementById("githubModal");
+      if (gh && gh.style.display !== "none") {
+        closeGithubModal();
+      }
+    }
+  });
+
   // 加载已有 GitHub 配置
   loadGithubConfig();
 
@@ -420,7 +447,7 @@ function renderProducts() {
       <div class="grid-card" data-asin="${item.asin}">
         <div class="card-image-wrap">
           <span class="card-badge-site">${escapeHtml(item.site || "Amazon")}</span>
-          <img src="${displayImg}" class="card-image" alt="Product" onerror="this.src='${defaultImg}'" loading="lazy" />
+          <img src="${displayImg}" class="card-image previewable-image" data-asin="${item.asin}" alt="Product" onerror="this.src='${defaultImg}'" loading="lazy" title="点击放大查看高清大图" />
         </div>
         <div class="grid-card-content">
           <a href="${item.url}" target="_blank" class="grid-card-title" title="${escapeHtml(item.title)}">
@@ -493,7 +520,7 @@ function renderProducts() {
     tableHtml += `
       <tr data-asin="${item.asin}">
         <td>
-          <img src="${displayImg}" class="table-thumb" alt="Product" onerror="this.src='${defaultImg}'" />
+          <img src="${displayImg}" class="table-thumb previewable-image" data-asin="${item.asin}" alt="Product" onerror="this.src='${defaultImg}'" title="点击放大查看高清大图" />
         </td>
         <td>
           <span class="table-asin" title="点击复制 ASIN" data-copy="${escapeHtml(item.asin)}">
@@ -919,6 +946,20 @@ function bindCardAndTableEvents() {
       }
     });
   });
+
+  // 点击图片放大查看高清大图灯箱 (Lightbox)
+  document.querySelectorAll(".previewable-image").forEach((img) => {
+    img.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const asin = img.dataset.asin;
+      const prod = allProducts.find((p) => p.asin === asin);
+      if (prod) {
+        openImageLightbox(prod.imageUrl || img.src, prod.title, prod.asin);
+      } else {
+        openImageLightbox(img.src, "商品大图", asin || "");
+      }
+    });
+  });
 }
 
 /**
@@ -1299,6 +1340,57 @@ function openGithubModal() {
  */
 function closeGithubModal() {
   document.getElementById("githubModal").style.display = "none";
+}
+
+/**
+ * 打开高清商品大图预览灯箱 (Lightbox)
+ */
+function openImageLightbox(imgUrl, title, asin) {
+  const modal = document.getElementById("imageLightboxModal");
+  const imgEl = document.getElementById("lightboxImage");
+  const titleEl = document.getElementById("lightboxTitle");
+  const asinEl = document.getElementById("lightboxAsin");
+  const origLink = document.getElementById("lightboxOrigLink");
+
+  if (!modal || !imgEl) return;
+
+  const validUrl = imgUrl && imgUrl !== "icons/icon48.png" ? imgUrl : "icons/icon48.png";
+  imgEl.src = validUrl;
+  imgEl.alt = title || "商品高清大图";
+
+  if (titleEl) {
+    titleEl.textContent = title || "未命名商品";
+    titleEl.title = title || "";
+  }
+  if (asinEl) {
+    asinEl.textContent = asin || "";
+    asinEl.style.display = asin ? "inline-block" : "none";
+  }
+  if (origLink) {
+    origLink.href = validUrl;
+  }
+
+  modal.style.display = "flex";
+  // 下一帧添加 active 类触发平滑渐入与缩放动画
+  requestAnimationFrame(() => {
+    modal.classList.add("active");
+  });
+  document.body.style.overflow = "hidden";
+}
+
+/**
+ * 关闭高清商品大图预览灯箱
+ */
+function closeImageLightbox() {
+  const modal = document.getElementById("imageLightboxModal");
+  if (!modal) return;
+  modal.classList.remove("active");
+  setTimeout(() => {
+    modal.style.display = "none";
+    const imgEl = document.getElementById("lightboxImage");
+    if (imgEl) imgEl.src = "";
+  }, 220);
+  document.body.style.overflow = "";
 }
 
 /**
