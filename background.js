@@ -8,13 +8,52 @@
  * 5. 核心：采集后全自动静默将数据提交至 GitHub 云端 (带互斥排队机制)
  */
 
+// 默认 GitHub 配置项（通过本地未提交文件或 storage 注入）
+const DEFAULT_CONFIG = {
+  owner: "lixun58555855-prog",
+  repo: "amazon-product-vault",
+  branch: "main",
+  token: "",
+  autoSync: true
+};
+
+// 安全加载本地未跟踪的专属配置 config.local.json
+async function loadLocalFallbackConfig() {
+  try {
+    const url = chrome.runtime.getURL("config.local.json");
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.token) {
+        return data;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+// 确保 Service Worker 启动时本地 storage 中有可用配置
+async function ensureGithubConfig() {
+  chrome.storage.local.get(["az_github_config"], async (res) => {
+    if (!res.az_github_config || !res.az_github_config.token) {
+      const localCfg = await loadLocalFallbackConfig();
+      if (localCfg) {
+        chrome.storage.local.set({ az_github_config: localCfg }, () => {
+          console.log("[Amazon Collector] 已从本地专属配置加载 GitHub 同步凭证");
+        });
+      }
+    }
+  });
+}
+ensureGithubConfig();
+
 // 自动同步状态互斥锁与排队标记
 let isSyncing = false;
 let pendingSync = false;
 
-// 插件安装或更新时注册右键菜单与加载预设配置
-chrome.runtime.onInstalled.addListener(async () => {
-  // 1. 初始化右键菜单
+// 插件安装或更新时注册右键菜单
+chrome.runtime.onInstalled.addListener(() => {
+  ensureGithubConfig();
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: "collectAmazonProduct",
@@ -42,24 +81,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     });
     console.log("[Amazon Collector] 右键菜单注册成功");
   });
-
-  // 2. 尝试读取本地专属配置文件 config.local.json 自动初始化 GitHub 设置
-  try {
-    const configUrl = chrome.runtime.getURL("config.local.json");
-    const res = await fetch(configUrl);
-    if (res.ok) {
-      const localCfg = await res.json();
-      chrome.storage.local.get(["az_github_config"], (stored) => {
-        if (!stored.az_github_config || !stored.az_github_config.token) {
-          chrome.storage.local.set({ az_github_config: localCfg }, () => {
-            console.log("[Amazon Collector] 已自动加载本地 GitHub 专属同步凭证");
-          });
-        }
-      });
-    }
-  } catch (e) {
-    console.log("[Amazon Collector] 未找到本地专属配置文件，将使用常规配置");
-  }
 });
 
 // 监听右键菜单点击
@@ -170,17 +191,34 @@ async function triggerAutoSync(sourceTabId) {
 }
 
 /**
+ * 标准现代 Base64 编码 (兼容 UTF-8 中文字符，且完全支持 Service Worker 环境)
+ */
+function encodeBase64Utf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
  * 执行 GitHub API 提交
  */
 function executeGitHubSync() {
   return new Promise((resolve) => {
     chrome.storage.local.get(["amazon_products", "az_github_config"], async (storage) => {
-      const config = storage.az_github_config;
+      // 优先从 storage 读取配置，若无则尝试从未跟踪的本地专属文件读取
+      let config = storage.az_github_config;
+      if (!config || !config.token) {
+        config = (await loadLocalFallbackConfig()) || DEFAULT_CONFIG;
+      }
       const products = storage.amazon_products || [];
 
       // 检查是否开启了自动同步（默认开启）
-      if (!config || config.autoSync === false) {
-        return resolve({ success: false, reason: "用户未开启自动同步或未配置" });
+      if (config.autoSync === false) {
+        return resolve({ success: false, reason: "用户已在设置中关闭自动同步" });
       }
 
       const { owner, repo, branch = "main", token } = config;
@@ -198,7 +236,8 @@ function executeGitHubSync() {
           const checkRes = await fetch(`${apiUrl}?ref=${branch}`, {
             headers: {
               "Accept": "application/vnd.github.v3+json",
-              "Authorization": `token ${token}`
+              "Authorization": `Bearer ${token}`,
+              "User-Agent": "Amazon-Product-Collector-MV3"
             }
           });
           if (checkRes.ok) {
@@ -211,7 +250,7 @@ function executeGitHubSync() {
 
         // 2. 构造 UTF-8 Base64 数据
         const jsonString = JSON.stringify(products, null, 2);
-        const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
+        const base64Content = encodeBase64Utf8(jsonString);
 
         const nowStr = new Date().toLocaleString('zh-CN', { hour12: false });
         const payload = {
@@ -223,12 +262,13 @@ function executeGitHubSync() {
           payload.sha = existingSha;
         }
 
-        // 3. 提交至 GitHub
+        // 3. 提交至 GitHub API
         const putRes = await fetch(apiUrl, {
           method: "PUT",
           headers: {
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": `token ${token}`,
+            "Authorization": `Bearer ${token}`,
+            "User-Agent": "Amazon-Product-Collector-MV3",
             "Content-Type": "application/json"
           },
           body: JSON.stringify(payload)
@@ -238,9 +278,11 @@ function executeGitHubSync() {
           resolve({ success: true, count: products.length });
         } else {
           const errData = await putRes.json();
+          console.error("[AutoSync] GitHub API 响应错误:", errData);
           resolve({ success: false, isError: true, reason: errData.message });
         }
       } catch (reqErr) {
+        console.error("[AutoSync] 网络或执行异常:", reqErr);
         resolve({ success: false, isError: true, reason: reqErr.message });
       }
     });

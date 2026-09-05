@@ -345,9 +345,14 @@ async function handleQuickSyncGithub() {
         }
       } catch (e) {}
 
-      // 准备提交
+      // 准备提交 (标准 TextEncoder 编码)
       const jsonString = JSON.stringify(allProducts, null, 2);
-      const base64Content = window.btoa(unescape(encodeURIComponent(jsonString)));
+      const bytes = new TextEncoder().encode(jsonString);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64Content = btoa(binary);
 
       const payload = {
         message: `Sync Amazon Products (${allProducts.length} items) via Extension`,
@@ -360,7 +365,8 @@ async function handleQuickSyncGithub() {
         method: "PUT",
         headers: {
           "Accept": "application/vnd.github.v3+json",
-          "Authorization": `token ${token}`,
+          "Authorization": `Bearer ${token}`,
+          "User-Agent": "Amazon-Product-Collector-MV3",
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)

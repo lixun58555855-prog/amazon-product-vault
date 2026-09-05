@@ -913,16 +913,26 @@ async function handlePullFromGithub() {
 }
 
 /**
- * UTF-8 字符串转 Base64 (防止中文乱码)
+ * UTF-8 字符串转 Base64 (标准 TextEncoder 实现，绝不报错)
  */
 function utf8ToBase64(str) {
-  return window.btoa(unescape(encodeURIComponent(str)));
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 /**
- * Base64 转 UTF-8 字符串
+ * Base64 转 UTF-8 字符串 (标准 TextDecoder 实现)
  */
 function base64ToUtf8(base64) {
-  return decodeURIComponent(escape(window.atob(base64)));
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new TextDecoder().decode(bytes);
 }
 
