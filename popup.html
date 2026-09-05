@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>亚马逊商品采集助手</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- 顶部导航 -->
+    <header class="header">
+      <div class="logo-area">
+        <img src="icons/icon48.png" class="app-icon" alt="Logo">
+        <div>
+          <h1 class="app-title">商品采集助手</h1>
+          <span class="app-subtitle">Amazon Local Vault</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnQuickSyncGithub" class="icon-btn" title="一键同步最新数据至 GitHub 云端">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          云端同步
+        </button>
+        <button id="btnOpenDashboard" class="icon-btn" title="打开全屏产品库管理面板">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          全屏面板
+        </button>
+      </div>
+    </header>
+
+    <!-- 一键采集当前页面快捷按钮 -->
+    <section class="quick-collect-section">
+      <button id="btnCollectCurrentPage" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>一键采集当前页面</span>
+      </button>
+      <div id="collectStatus" class="collect-status"></div>
+    </section>
+
+    <!-- 搜索与筛选工具条 -->
+    <section class="toolbar-section">
+      <div class="search-box">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchInput" placeholder="搜索 ASIN 或商品标题...">
+        <button id="btnClearSearch" class="clear-search-btn" style="display:none;">✕</button>
+      </div>
+    </section>
+
+    <!-- 统计行 -->
+    <div class="stats-bar">
+      <span id="productCountText">共 0 件商品</span>
+      <div class="stats-actions">
+        <button id="btnExportCsv" class="text-link-btn" title="导出为 Excel 兼容的 CSV 文件">导出 CSV</button>
+        <span class="divider">|</span>
+        <button id="btnClearAll" class="text-link-btn danger" title="清空全部产品">清空全部</button>
+      </div>
+    </div>
+
+    <!-- 商品卡片列表区域 -->
+    <main class="product-list-wrapper">
+      <div id="productList" class="product-list">
+        <!-- 动态渲染卡片 -->
+      </div>
+      <!-- 空数据缺省占位 -->
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">📦</div>
+        <div class="empty-title">本地产品库暂无商品</div>
+        <p class="empty-desc">在任意亚马逊商品页点击右键<br>选择“<b>添加到本地产品库</b>”或点击上方按钮进行采集</p>
+      </div>
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer class="footer">
+      <span>本地离线存储安全可用</span>
+      <span id="storageInfo">chrome.storage.local</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
