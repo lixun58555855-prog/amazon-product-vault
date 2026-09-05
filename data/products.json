@@ -1,26 +1,8 @@
 [
   {
-    "asin": "B0CZ63PY86",
-    "collectedAt": "2026/9/5 23:28:50",
-    "collectedTimestamp": 1788622130995,
-    "currency": "$ (USD/CAD/AUD)",
-    "imageUrl": "https://m.media-amazon.com/images/I/81c5VJadFqL._AC_SL1500_.jpg",
-    "price": "$22.99",
-    "site": "amazon.com",
-    "title": "Daoeny 35In Metal Bird Bath for Outside, Vintage Freestanding Birdbaths & Birdfeeder, Bird Baths Feeder Bowl for Outdoors Garden Patio Yard Lawn Decor, Upgraded 5-Pronged Base (Antique Bronze)",
-    "url": "https://www.amazon.com/dp/B0CZ63PY86"
-  },
-  {
-    "asin": "B0FHJYDK1H",
-    "collectedAt": "2026/9/5 22:54:04",
-    "collectedTimestamp": 1788620044215,
-    "currency": "$ (USD/CAD/AUD)",
-    "imageUrl": "https://m.media-amazon.com/images/I/61j3sMCxu6L._AC_SL1085_.jpg",
-    "price": "$22.99",
-    "site": "amazon.com",
-    "title": "Bird Bath Solar Swing Device,Stainless Steel Solar Bird Bath Water Agitator, 5V 0.5W Bird Bath Solar Powered Water Agitator with Bracketfor Garden Pond, Pool Scenery, Oxygen",
-    "updatedAt": "2026/9/5 23:22:48",
-    "updatedTimestamp": 1788621768748,
-    "url": "https://www.amazon.com/dp/B0FHJYDK1H"
+    "asin": "B08N5WRWNW",
+    "title": "Test Product",
+    "price": ".99",
+    "collectedAt": "2026-09-05T15:31:58.941Z"
   }
 ]
