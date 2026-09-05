@@ -648,6 +648,11 @@ function loadGithubConfig() {
       .then((r) => r.json())
       .then((localCfg) => {
         readConfig(localCfg);
+        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ az_github_config: localCfg }, () => {
+            console.log("[Dashboard] 自动持久化本地专属配置成功");
+          });
+        }
       })
       .catch(() => {});
   };
