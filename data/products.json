@@ -7,21 +7,22 @@
     "currency": "$ (USD/CAD/AUD)",
     "site": "amazon.com",
     "dimensions": "21.6 x 16.5 x 5.1 cm",
-    "weight": "0.59 kg",
+    "weight": "299 kg",
     "rawDimensions": "8.5\"L x 6.5\"W x 2\"H",
     "rawWeight": "1.3 pounds",
     "purchasePrice": "",
     "shipping": {
       "volWeight": 0.3,
-      "actualWeight": 0.59,
-      "chargeableWeight": 0.59,
-      "airCost": 38.94,
-      "seaCost": 8.85,
+      "actualWeight": 299,
+      "chargeableWeight": 299,
+      "airCost": 19734,
+      "seaCost": 4485,
       "isVolumetric": false
     },
     "url": "https://www.amazon.com/dp/B00PKNO7LK",
     "collectedAt": "2026/9/6 03:22:44",
-    "collectedTimestamp": 1788636164552
+    "collectedTimestamp": 1788636164552,
+    "updatedAt": "2026/9/6 03:30:21"
   },
   {
     "asin": "B0DXDQSB16",
