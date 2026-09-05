@@ -273,6 +273,74 @@ body {
   color: var(--primary-orange);
 }
 
+/* 小菜单栏保存按钮容器与按钮 */
+.toolbar-save-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.btn-toolbar-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e293b;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 7px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  transition: all 0.25s ease;
+  user-select: none;
+  opacity: 0.5;
+}
+
+.btn-toolbar-save svg {
+  transition: transform 0.2s ease;
+}
+
+/* 激活状态：翡翠绿高亮发光 + 呼吸光晕 + 手型指针 */
+.btn-toolbar-save.active {
+  opacity: 1;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border-color: #34d399;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
+  animation: pulseGreen 2s infinite;
+}
+
+.btn-toolbar-save.active:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.65);
+  transform: translateY(-1px);
+}
+
+.btn-toolbar-save.active:active {
+  transform: translateY(1px);
+}
+
+.btn-toolbar-save.syncing {
+  opacity: 1;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  border-color: #38bdf8;
+  cursor: wait;
+}
+
+@keyframes pulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
 /* 内容区 */
 .content-container {
   margin-top: 24px;
@@ -488,6 +556,79 @@ body {
   font-size: 12px;
 }
 
+/* 网格卡片中的采购价输入行 */
+.grid-card-purchase {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.grid-card-purchase:focus-within {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.purchase-label {
+  font-size: 11px;
+  color: #fbbf24;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.purchase-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.purchase-currency {
+  font-size: 12px;
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.card-input-purchase {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  padding: 2px 4px;
+}
+
+.card-input-purchase::placeholder {
+  color: #64748b;
+  font-weight: normal;
+}
+
+.btn-card-save {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.btn-card-save:hover {
+  background: #059669;
+}
+
 .grid-card-footer {
   margin-top: auto;
   padding-top: 12px;
@@ -613,6 +754,82 @@ body {
 .table-actions {
   display: flex;
   gap: 6px;
+  align-items: center;
+}
+
+/* 表格视图行内输入框 */
+.table-edit-input {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.table-edit-input:hover {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.table-edit-input:focus {
+  background: #0f172a;
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  color: #ffffff;
+}
+
+.table-edit-input.purchase-cell-input {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.table-edit-input.purchase-cell-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+}
+
+.table-edit-input.price-cell-input {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+/* 正在编辑或有改动的表格行高亮 */
+.products-table tbody tr.row-editing {
+  background: rgba(56, 189, 248, 0.08) !important;
+}
+
+/* 行级别独立保存按钮 */
+.btn-row-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+  white-space: nowrap;
+}
+
+.btn-row-save:hover {
+  background: #059669;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  transform: scale(1.03);
+}
+
+.btn-row-save:active {
+  transform: scale(0.97);
 }
 
 /* 空状态 */

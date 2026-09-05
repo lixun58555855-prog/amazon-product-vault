@@ -110,6 +110,14 @@
         </select>
       </div>
 
+      <!-- 小菜单栏保存按钮（选择输入框或修改后激活，点击同步到云端） -->
+      <div class="toolbar-save-wrap">
+        <button id="btnToolbarSave" class="btn-toolbar-save disabled" disabled title="选择输入框或修改内容后激活，点击同步到 GitHub 云端">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          <span id="btnToolbarSaveText">💾 保存修改并同步云端</span>
+        </button>
+      </div>
+
       <!-- 视图切换按钮 -->
       <div class="view-toggles">
         <button id="btnViewGrid" class="view-toggle-btn active" title="网格卡片视图">
@@ -133,18 +141,19 @@
         <table class="products-table">
           <thead>
             <tr>
-              <th width="75">商品图</th>
-              <th width="115">ASIN</th>
+              <th width="70">商品图</th>
+              <th width="110">ASIN</th>
               <th>商品标题</th>
-              <th width="100">抓取价格</th>
-              <th width="130">尺寸 (cm)</th>
-              <th width="90">实重 (kg)</th>
-              <th width="95">计费重 (kg)</th>
-              <th width="105">✈️ 空运 (¥66)</th>
-              <th width="105">🚢 海运 (¥15)</th>
-              <th width="90">站点</th>
-              <th width="140">采集/更新时间</th>
-              <th width="100">操作</th>
+              <th width="100">抓取价格 ✏️</th>
+              <th width="105">采购价 (¥) ✏️</th>
+              <th width="130">尺寸 (cm) ✏️</th>
+              <th width="90">实重 (kg) ✏️</th>
+              <th width="90">计费重 (kg)</th>
+              <th width="100">✈️ 空运 (¥66)</th>
+              <th width="100">🚢 海运 (¥15)</th>
+              <th width="85">站点</th>
+              <th width="135">采集/更新时间</th>
+              <th width="105">操作</th>
             </tr>
           </thead>
           <tbody id="tableBody">

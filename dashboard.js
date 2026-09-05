@@ -162,6 +162,16 @@ function initUI() {
   document.getElementById("fileInputJson").addEventListener("change", handleImportJson);
   document.getElementById("btnClearAll").addEventListener("click", handleClearAll);
 
+  // 小菜单栏保存按钮事件
+  const btnToolbarSave = document.getElementById("btnToolbarSave");
+  if (btnToolbarSave) {
+    btnToolbarSave.addEventListener("click", () => {
+      if (!btnToolbarSave.disabled) {
+        saveAndSyncToGithub();
+      }
+    });
+  }
+
   // GitHub 云端同步相关事件
   document.getElementById("btnSyncToGithub").addEventListener("click", handleSyncToGithub);
   document.getElementById("btnPullFromGithub").addEventListener("click", handlePullFromGithub);
@@ -402,6 +412,7 @@ function renderProducts() {
     const displayDim = convertDimensionsToCm(item.dimensions);
     const displayWeight = convertWeightToKg(item.weight);
     const shipping = calculateShippingCosts(item.dimensions, item.weight);
+    const purchaseVal = item.purchasePrice || "";
 
     // Grid Card HTML
     gridHtml += `
@@ -423,6 +434,15 @@ function renderProducts() {
           <div class="grid-card-specs">
             <span class="spec-pill" title="尺寸: ${escapeHtml(displayDim)}${item.rawDimensions ? ` (原始: ${escapeHtml(item.rawDimensions)})` : ''}">📏 ${escapeHtml(displayDim)}</span>
             <span class="spec-pill" title="重量: ${escapeHtml(displayWeight)}${item.rawWeight ? ` (原始: ${escapeHtml(item.rawWeight)})` : ''}">⚖️ ${escapeHtml(displayWeight)}</span>
+          </div>
+          <!-- 采购价手动输入行 -->
+          <div class="grid-card-purchase" title="手动输入该商品采购价格 (¥)">
+            <span class="purchase-label">💰 采购价:</span>
+            <div class="purchase-input-wrap">
+              <span class="purchase-currency">¥</span>
+              <input type="text" class="card-input-purchase editable-input" data-asin="${item.asin}" data-field="purchasePrice" placeholder="输入采购价" value="${escapeHtml(purchaseVal)}" />
+            </div>
+            <button class="btn-card-save" data-save-asin="${item.asin}" title="保存修改并同步到 GitHub 云端" style="display:none;">💾 保存</button>
           </div>
           ${shipping ? `
             <div class="grid-card-shipping">
@@ -454,7 +474,10 @@ function renderProducts() {
       </div>
     `;
 
-    // Table Row HTML
+    // Table Row HTML（支持抓取价格、采购价、尺寸、实重直接编辑）
+    const dimValForInput = displayDim !== "暂无" ? displayDim : (item.dimensions || "");
+    const wtValForInput = displayWeight !== "暂无" ? displayWeight : (item.weight || "");
+
     tableHtml += `
       <tr data-asin="${item.asin}">
         <td>
@@ -470,23 +493,33 @@ function renderProducts() {
             ${escapeHtml(item.title || "未命名商品")}
           </a>
         </td>
+        <!-- 抓取价格 (可直接编辑) -->
         <td>
-          <span class="table-price">${escapeHtml(item.price || "未标价")}</span>
+          <input type="text" class="table-edit-input price-cell-input editable-input" data-asin="${item.asin}" data-field="price" value="${escapeHtml(item.price || '')}" placeholder="未标价" title="点击编辑抓取价格 (按回车或点击保存)" />
         </td>
+        <!-- 采购价 (可直接编辑) -->
         <td>
-          <span class="table-dim" title="${escapeHtml(displayDim)}${item.rawDimensions ? ` (原始: ${escapeHtml(item.rawDimensions)})` : ''}">${escapeHtml(displayDim)}</span>
+          <input type="text" class="table-edit-input purchase-cell-input editable-input" data-asin="${item.asin}" data-field="purchasePrice" value="${escapeHtml(purchaseVal)}" placeholder="输入采购价" title="点击编辑采购价 (¥) (按回车或点击保存)" />
         </td>
+        <!-- 尺寸 (可直接编辑，自动联动重算) -->
         <td>
-          <span class="table-weight" title="${escapeHtml(displayWeight)}${item.rawWeight ? ` (原始: ${escapeHtml(item.rawWeight)})` : ''}">${escapeHtml(displayWeight)}</span>
+          <input type="text" class="table-edit-input dim-cell-input editable-input" data-asin="${item.asin}" data-field="dimensions" value="${escapeHtml(dimValForInput)}" placeholder="长x宽x高" title="点击编辑尺寸 (cm)，自动联动重算计费重与运费" />
         </td>
+        <!-- 实重 (可直接编辑，自动联动重算) -->
         <td>
-          <span class="table-chg-wt" title="体积重: ${shipping ? shipping.volWeight : '-'}kg, 实重: ${shipping ? shipping.actualWeight : '-'}kg (${shipping && shipping.isVolumetric ? '体积重较大' : '实重较大'})">${shipping ? `${shipping.chargeableWeight} kg` : '-'}</span>
+          <input type="text" class="table-edit-input weight-cell-input editable-input" data-asin="${item.asin}" data-field="weight" value="${escapeHtml(wtValForInput)}" placeholder="重量" title="点击编辑实重 (kg)，自动联动重算计费重与运费" />
         </td>
+        <!-- 计费重 (动态联动更新) -->
         <td>
-          <span class="table-air-cost" title="计费重 ${shipping ? shipping.chargeableWeight : 0}kg × 66元">${shipping ? `¥${shipping.airCost}` : '-'}</span>
+          <span class="table-chg-wt" id="chgWt_${item.asin}" title="体积重: ${shipping ? shipping.volWeight : '-'}kg, 实重: ${shipping ? shipping.actualWeight : '-'}kg (${shipping && shipping.isVolumetric ? '体积重较大' : '实重较大'})">${shipping ? `${shipping.chargeableWeight} kg` : '-'}</span>
         </td>
+        <!-- ✈️ 空运头程 (动态联动更新) -->
         <td>
-          <span class="table-sea-cost" title="计费重 ${shipping ? shipping.chargeableWeight : 0}kg × 15元">${shipping ? `¥${shipping.seaCost}` : '-'}</span>
+          <span class="table-air-cost" id="airCost_${item.asin}" title="计费重 ${shipping ? shipping.chargeableWeight : 0}kg × 66元">${shipping ? `¥${shipping.airCost}` : '-'}</span>
+        </td>
+        <!-- 🚢 海运头程 (动态联动更新) -->
+        <td>
+          <span class="table-sea-cost" id="seaCost_${item.asin}" title="计费重 ${shipping ? shipping.chargeableWeight : 0}kg × 15元">${shipping ? `¥${shipping.seaCost}` : '-'}</span>
         </td>
         <td>
           <span class="tag-site-pill">${escapeHtml(item.site || "Amazon")}</span>
@@ -494,8 +527,14 @@ function renderProducts() {
         <td>
           <span class="table-time">${displayTime}</span>
         </td>
+        <!-- 操作列 -->
         <td>
           <div class="table-actions">
+            <!-- 行级别独立保存按钮（激活编辑时即刻出现） -->
+            <button class="btn-row-save" data-save-asin="${item.asin}" title="保存此行修改并同步到 GitHub 云端" style="display:none;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              <span>保存</span>
+            </button>
             <button class="btn-icon-action" title="复制商品链接" data-copy-url="${item.url}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
             </button>
@@ -512,6 +551,203 @@ function renderProducts() {
   tableBody.innerHTML = tableHtml;
 
   bindCardAndTableEvents();
+}
+
+/**
+ * 激活保存按钮（选择输入框或修改内容时触发）
+ */
+function activateSaveButton(asin) {
+  const toolbarSaveBtn = document.getElementById("btnToolbarSave");
+  if (toolbarSaveBtn) {
+    toolbarSaveBtn.disabled = false;
+    toolbarSaveBtn.classList.remove("disabled");
+    toolbarSaveBtn.classList.add("active");
+    const textEl = document.getElementById("btnToolbarSaveText");
+    if (textEl && !toolbarSaveBtn.classList.contains("syncing")) {
+      textEl.textContent = "💾 保存修改并同步云端";
+    }
+  }
+
+  if (asin) {
+    // 激活对应表格行的保存按钮和高亮
+    const row = document.querySelector(`tr[data-asin="${asin}"]`);
+    if (row) {
+      row.classList.add("row-editing");
+      const rowSaveBtn = row.querySelector(".btn-row-save");
+      if (rowSaveBtn) rowSaveBtn.style.display = "inline-flex";
+    }
+
+    // 激活对应网格卡片的保存按钮
+    const card = document.querySelector(`.grid-card[data-asin="${asin}"]`);
+    if (card) {
+      const cardSaveBtn = card.querySelector(".btn-card-save");
+      if (cardSaveBtn) cardSaveBtn.style.display = "inline-block";
+    }
+  }
+}
+
+/**
+ * 重置并停用保存按钮（数据成功同步后触发）
+ */
+function deactivateSaveButton() {
+  const toolbarSaveBtn = document.getElementById("btnToolbarSave");
+  if (toolbarSaveBtn) {
+    toolbarSaveBtn.disabled = true;
+    toolbarSaveBtn.classList.remove("active", "syncing");
+    toolbarSaveBtn.classList.add("disabled");
+    const textEl = document.getElementById("btnToolbarSaveText");
+    if (textEl) textEl.textContent = "✓ 已同步到云端";
+    setTimeout(() => {
+      if (textEl && toolbarSaveBtn.disabled) {
+        textEl.textContent = "💾 保存修改并同步云端";
+      }
+    }, 2500);
+  }
+
+  document.querySelectorAll(".products-table tbody tr.row-editing").forEach((r) => r.classList.remove("row-editing"));
+  document.querySelectorAll(".btn-row-save").forEach((b) => (b.style.display = "none"));
+  document.querySelectorAll(".btn-card-save").forEach((b) => (b.style.display = "none"));
+}
+
+/**
+ * 从页面 DOM 中收集所有编辑过的数据并回填至 allProducts
+ */
+function collectEditsFromDOM(targetAsin = null) {
+  const selector = targetAsin ? `.editable-input[data-asin="${targetAsin}"]` : ".editable-input";
+  const inputs = document.querySelectorAll(selector);
+
+  inputs.forEach((inp) => {
+    const asin = inp.dataset.asin;
+    const field = inp.dataset.field;
+    if (!asin || !field) return;
+
+    const item = allProducts.find((p) => p.asin === asin);
+    if (!item) return;
+
+    const rawVal = inp.value.trim();
+    if (field === "dimensions") {
+      item.dimensions = rawVal ? convertDimensionsToCm(rawVal) : "暂无";
+    } else if (field === "weight") {
+      item.weight = rawVal ? convertWeightToKg(rawVal) : "暂无";
+    } else if (field === "purchasePrice") {
+      if (rawVal) {
+        const numPart = rawVal.replace(/[¥￥\s]/g, "");
+        if (!isNaN(parseFloat(numPart))) {
+          item.purchasePrice = `¥${numPart}`;
+        } else {
+          item.purchasePrice = rawVal;
+        }
+      } else {
+        item.purchasePrice = "";
+      }
+    } else if (field === "price") {
+      item.price = rawVal;
+    }
+  });
+
+  // 统一更新受影响商品的头程运费
+  allProducts.forEach((item) => {
+    if (!targetAsin || item.asin === targetAsin) {
+      item.shipping = calculateShippingCosts(item.dimensions, item.weight);
+    }
+  });
+}
+
+/**
+ * 保存修改并同步到 GitHub 云端数据库
+ */
+async function saveAndSyncToGithub(targetAsin = null) {
+  const token = ensureCloudToken();
+  if (!token) {
+    alert("未提供有效 Token，已取消云端同步操作。");
+    return;
+  }
+
+  const toolbarSaveBtn = document.getElementById("btnToolbarSave");
+  const saveText = document.getElementById("btnToolbarSaveText");
+  if (toolbarSaveBtn) {
+    toolbarSaveBtn.classList.add("syncing");
+    toolbarSaveBtn.disabled = true;
+    if (saveText) saveText.textContent = "☁️ 正在同步到云端...";
+  }
+
+  // 1. 从当前 DOM 输入框收集最新修改到 allProducts
+  collectEditsFromDOM(targetAsin);
+
+  // 2. 刷新更新时间
+  const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
+  if (targetAsin) {
+    const targetItem = allProducts.find((p) => p.asin === targetAsin);
+    if (targetItem) targetItem.updatedAt = nowStr;
+  } else {
+    allProducts.forEach((p) => {
+      p.updatedAt = nowStr;
+    });
+  }
+
+  const { owner, repo, branch = "main" } = currentGithubConfig;
+  showToast("正在将修改保存并同步至 GitHub 云端...");
+
+  try {
+    const filePath = "data/products.json";
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+
+    // 获取最新 sha
+    let sha = null;
+    const checkRes = await fetch(`${apiUrl}?ref=${branch}&_t=${Date.now()}`, {
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `Bearer ${token}`,
+        "User-Agent": "Amazon-Product-Collector-MV3"
+      }
+    });
+
+    if (checkRes.ok) {
+      const fileInfo = await checkRes.json();
+      sha = fileInfo.sha;
+    }
+
+    // 提交全量更新数据
+    const base64Content = utf8ToBase64(JSON.stringify(allProducts, null, 2));
+    const payload = {
+      message: targetAsin
+        ? `Update product ${targetAsin} - ${formatDateStr()}`
+        : `Update products (${allProducts.length} items) - ${formatDateStr()}`,
+      content: base64Content,
+      branch: branch
+    };
+    if (sha) payload.sha = sha;
+
+    const putRes = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `Bearer ${token}`,
+        "User-Agent": "Amazon-Product-Collector-MV3",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (putRes.ok) {
+      persistProducts(allProducts, () => {
+        deactivateSaveButton();
+        showToast("✓ 数据已成功保存并实时同步到 GitHub 云端！");
+        renderProducts();
+      });
+    } else {
+      const errJson = await putRes.json();
+      throw new Error(errJson.message || "GitHub API 提交失败");
+    }
+  } catch (err) {
+    console.error("保存并同步云端异常:", err);
+    alert(`保存并同步到云端失败: ${err.message}`);
+    if (toolbarSaveBtn) {
+      toolbarSaveBtn.classList.remove("syncing");
+      toolbarSaveBtn.disabled = false;
+      if (saveText) saveText.textContent = "💾 保存修改并同步云端";
+    }
+  }
 }
 
 /**
@@ -542,6 +778,68 @@ function bindCardAndTableEvents() {
       e.stopPropagation();
       const asin = el.getAttribute("data-delete-asin");
       deleteProduct(asin);
+    });
+  });
+
+  // 行级别保存按钮点击
+  document.querySelectorAll(".btn-row-save").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const asin = btn.getAttribute("data-save-asin");
+      saveAndSyncToGithub(asin);
+    });
+  });
+
+  // 卡片内部保存按钮点击
+  document.querySelectorAll(".btn-card-save").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const asin = btn.getAttribute("data-save-asin");
+      saveAndSyncToGithub(asin);
+    });
+  });
+
+  // 监听所有可编辑输入框（采购价、抓取价格、尺寸、实重）
+  document.querySelectorAll(".editable-input").forEach((input) => {
+    // 聚焦时激活小菜单栏保存按钮与行保存按钮
+    input.addEventListener("focus", (e) => {
+      const asin = e.target.dataset.asin;
+      activateSaveButton(asin);
+    });
+
+    // 输入时激活保存按钮并支持尺寸/重量实时动态联动重算
+    input.addEventListener("input", (e) => {
+      const asin = e.target.dataset.asin;
+      activateSaveButton(asin);
+
+      const field = e.target.dataset.field;
+      if (field === "dimensions" || field === "weight") {
+        const row = e.target.closest("tr");
+        if (row) {
+          const dimInp = row.querySelector('[data-field="dimensions"]');
+          const wtInp = row.querySelector('[data-field="weight"]');
+          const dimVal = dimInp ? dimInp.value.trim() : "";
+          const wtVal = wtInp ? wtInp.value.trim() : "";
+          const ship = calculateShippingCosts(dimVal, wtVal);
+
+          const chgWtEl = document.getElementById(`chgWt_${asin}`);
+          const airCostEl = document.getElementById(`airCost_${asin}`);
+          const seaCostEl = document.getElementById(`seaCost_${asin}`);
+
+          if (chgWtEl) chgWtEl.textContent = ship ? `${ship.chargeableWeight} kg` : "-";
+          if (airCostEl) airCostEl.textContent = ship ? `¥${ship.airCost}` : "-";
+          if (seaCostEl) seaCostEl.textContent = ship ? `¥${ship.seaCost}` : "-";
+        }
+      }
+    });
+
+    // 回车键快捷保存并同步云端
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const asin = e.target.dataset.asin;
+        saveAndSyncToGithub(asin);
+      }
     });
   });
 }
@@ -742,7 +1040,7 @@ function exportToCsv() {
     return;
   }
 
-  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (cm)", "实重 (kg)", "体积重 (kg)", "计费重 (kg)", "空运头程 (元)", "海运头程 (元)", "站点", "商品直达链接", "高清大图链接", "采集时间", "最新更新时间"];
+  const headers = ["ASIN", "商品标题", "抓取价格", "采购价 (¥)", "币种", "尺寸 (cm)", "实重 (kg)", "体积重 (kg)", "计费重 (kg)", "空运头程 (元)", "海运头程 (元)", "站点", "商品直达链接", "高清大图链接", "采集时间", "最新更新时间"];
   const rows = allProducts.map((p) => {
     const dim = convertDimensionsToCm(p.dimensions);
     const wt = convertWeightToKg(p.weight);
@@ -751,6 +1049,7 @@ function exportToCsv() {
       p.asin || "",
       `"${(p.title || "").replace(/"/g, '""')}"`,
       `"${(p.price || "").replace(/"/g, '""')}"`,
+      `"${(p.purchasePrice || "").replace(/"/g, '""')}"`,
       `"${(p.currency || "").replace(/"/g, '""')}"`,
       `"${(dim || "").replace(/"/g, '""')}"`,
       `"${(wt || "").replace(/"/g, '""')}"`,

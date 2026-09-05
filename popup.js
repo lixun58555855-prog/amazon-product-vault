@@ -137,6 +137,7 @@ function renderProducts() {
           </a>
           <div class="card-meta-row">
             <span class="card-price">${escapeHtml(item.price || "未标价")}</span>
+            ${item.purchasePrice ? `<span class="tag-badge" style="color:#fbbf24;border-color:rgba(245,158,11,0.4);background:rgba(245,158,11,0.1);">采购: ${escapeHtml(item.purchasePrice)}</span>` : ''}
             <div class="card-tags">
               <span class="tag-badge tag-site">${escapeHtml(item.site || "Amazon")}</span>
               <span class="tag-badge">ASIN: ${escapeHtml(item.asin)}</span>
@@ -267,7 +268,7 @@ function exportProductsToCsv() {
     return;
   }
 
-  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (cm)", "实重 (kg)", "体积重 (kg)", "计费重 (kg)", "空运头程 (元)", "海运头程 (元)", "站点", "商品链接", "主图链接", "采集时间", "更新时间"];
+  const headers = ["ASIN", "商品标题", "抓取价格", "采购价 (¥)", "币种", "尺寸 (cm)", "实重 (kg)", "体积重 (kg)", "计费重 (kg)", "空运头程 (元)", "海运头程 (元)", "站点", "商品链接", "主图链接", "采集时间", "更新时间"];
   const rows = allProducts.map((p) => {
     const dim = convertDimensionsToCm(p.dimensions);
     const wt = convertWeightToKg(p.weight);
@@ -276,6 +277,7 @@ function exportProductsToCsv() {
       p.asin || "",
       `"${(p.title || "").replace(/"/g, '""')}"`,
       `"${(p.price || "").replace(/"/g, '""')}"`,
+      `"${(p.purchasePrice || "").replace(/"/g, '""')}"`,
       `"${(p.currency || "").replace(/"/g, '""')}"`,
       `"${(dim || "").replace(/"/g, '""')}"`,
       `"${(wt || "").replace(/"/g, '""')}"`,

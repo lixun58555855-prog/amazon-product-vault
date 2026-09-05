@@ -248,6 +248,7 @@ function extractAmazonProductDetails() {
     weight,
     rawDimensions: rawDim,
     rawWeight: rawWt,
+    purchasePrice: "",
     shipping,
     url: cleanUrl,
     collectedAt: formatTime,
