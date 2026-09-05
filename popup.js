@@ -471,12 +471,13 @@ function convertWeightToKg(weightStr) {
     kgVal = num * 0.45359237;
   } else if (/ounce|ounces|\boz\b|盎司/.test(lower)) {
     kgVal = num * 0.02834952;
-  } else if (/(\bg\b|grams?|克)/.test(lower) && !/kg|kilogram|千克|公斤/.test(lower)) {
-    kgVal = num / 1000;
   } else if (/kg|kilogram|千克|公斤/.test(lower)) {
     kgVal = num;
+  } else if (/grams?|克|(?:\d|\s)g(?:$|[^\w])/.test(lower)) {
+    kgVal = num / 1000;
   } else {
-    kgVal = num * 0.45359237;
+    // 默认单位为 kg
+    kgVal = num;
   }
 
   let formattedKg;

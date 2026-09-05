@@ -417,13 +417,13 @@ function convertWeightToKg(weightStr) {
     kgVal = num * 0.45359237; // 1 磅 ≈ 0.4536 kg
   } else if (/ounce|ounces|\boz\b|盎司/.test(lower)) {
     kgVal = num * 0.02834952; // 1 盎司 ≈ 0.02835 kg
-  } else if (/(\bg\b|grams?|克)/.test(lower) && !/kg|kilogram|千克|公斤/.test(lower)) {
-    kgVal = num / 1000; // 1 克 = 0.001 kg
   } else if (/kg|kilogram|千克|公斤/.test(lower)) {
     kgVal = num;
+  } else if (/grams?|克|(?:\d|\s)g(?:$|[^\w])/.test(lower)) {
+    kgVal = num / 1000; // 1 克 = 0.001 kg
   } else {
-    // 默认若未标明单位，视作英镑
-    kgVal = num * 0.45359237;
+    // 默认单位为 kg
+    kgVal = num;
   }
 
   let formattedKg;
