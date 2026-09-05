@@ -310,7 +310,12 @@ async function handleQuickSyncGithub() {
   const originHtml = syncBtn.innerHTML;
 
   chrome.storage.local.get(["az_github_config"], async (res) => {
-    const config = res.az_github_config;
+    const config = res.az_github_config || {
+      owner: "lixun58555855-prog",
+      repo: "amazon-product-vault",
+      branch: "main",
+      token: ""
+    };
     if (!config || !config.owner || !config.repo || !config.token) {
       alert("请先点击【全屏面板】右上角的【⚙️ GitHub 配置】填写仓库与访问令牌！");
       chrome.runtime.sendMessage({ action: "OPEN_DASHBOARD" });

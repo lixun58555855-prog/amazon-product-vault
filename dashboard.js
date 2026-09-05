@@ -587,8 +587,8 @@ function escapeHtml(str) {
  * ========================================================== */
 
 let currentGithubConfig = {
-  owner: "",
-  repo: "",
+  owner: "lixun58555855-prog",
+  repo: "amazon-product-vault",
   branch: "main",
   token: ""
 };
