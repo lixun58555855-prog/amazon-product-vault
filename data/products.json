@@ -10,7 +10,14 @@
     "weight": "0.16 kg",
     "rawDimensions": "8.5\"D x 6\"W x 2\"H",
     "rawWeight": "0.16 kg",
-    "shipping": null,
+    "shipping": {
+      "volWeight": 0.28,
+      "actualWeight": 0.16,
+      "chargeableWeight": 0.28,
+      "airCost": 18.42,
+      "seaCost": 4.19,
+      "isVolumetric": true
+    },
     "url": "https://www.amazon.com/dp/B0DXDQSB16",
     "collectedAt": "2026/9/6 02:36:35",
     "collectedTimestamp": 1788633395280
