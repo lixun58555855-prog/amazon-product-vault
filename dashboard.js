@@ -445,7 +445,7 @@ function renderProducts() {
     // Grid Card HTML
     gridHtml += `
       <div class="grid-card" data-asin="${item.asin}">
-        <div class="card-image-wrap">
+        <div class="card-image-wrap" data-asin="${item.asin}" title="点击放大查看高清大图">
           <span class="card-badge-site">${escapeHtml(item.site || "Amazon")}</span>
           <img src="${displayImg}" class="card-image previewable-image" data-asin="${item.asin}" alt="Product" onerror="this.src='${defaultImg}'" loading="lazy" title="点击放大查看高清大图" />
         </div>
@@ -947,16 +947,20 @@ function bindCardAndTableEvents() {
     });
   });
 
-  // 点击图片放大查看高清大图灯箱 (Lightbox)
-  document.querySelectorAll(".previewable-image").forEach((img) => {
-    img.addEventListener("click", (e) => {
+  // 点击图片或图片外框放大查看高清大图灯箱 (Lightbox)
+  document.querySelectorAll(".previewable-image, .card-image-wrap").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      // 避免点击右上角站点徽标时误触发
+      if (e.target.classList.contains("card-badge-site")) return;
       e.stopPropagation();
-      const asin = img.dataset.asin;
+      const img = el.tagName === "IMG" ? el : el.querySelector("img");
+      const asin = el.dataset.asin || (img ? img.dataset.asin : "");
       const prod = allProducts.find((p) => p.asin === asin);
+      const imgSrc = img ? img.src : "";
       if (prod) {
-        openImageLightbox(prod.imageUrl || img.src, prod.title, prod.asin);
-      } else {
-        openImageLightbox(img.src, "商品大图", asin || "");
+        openImageLightbox(prod.imageUrl || imgSrc, prod.title, prod.asin);
+      } else if (imgSrc) {
+        openImageLightbox(imgSrc, "商品大图", asin || "");
       }
     });
   });
@@ -1371,10 +1375,7 @@ function openImageLightbox(imgUrl, title, asin) {
   }
 
   modal.style.display = "flex";
-  // 下一帧添加 active 类触发平滑渐入与缩放动画
-  requestAnimationFrame(() => {
-    modal.classList.add("active");
-  });
+  modal.classList.add("active");
   document.body.style.overflow = "hidden";
 }
 
@@ -1385,11 +1386,9 @@ function closeImageLightbox() {
   const modal = document.getElementById("imageLightboxModal");
   if (!modal) return;
   modal.classList.remove("active");
-  setTimeout(() => {
-    modal.style.display = "none";
-    const imgEl = document.getElementById("lightboxImage");
-    if (imgEl) imgEl.src = "";
-  }, 220);
+  modal.style.display = "none";
+  const imgEl = document.getElementById("lightboxImage");
+  if (imgEl) imgEl.src = "";
   document.body.style.overflow = "";
 }
 
