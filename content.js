@@ -449,7 +449,8 @@ function calculateShippingCosts(dimStr, weightStr, airRate = 66, seaRate = 15) {
   }
 
   const stdDim = convertDimensionsToCm(dimStr);
-  const dimMatches = stdDim.match(/\d+(?:\.\d+)?/g);
+  if (!stdDim || stdDim === "暂无" || stdDim === "-") return null;
+  const dimMatches = stdDim.replace(/(\d+),(\d+)/g, "$1.$2").match(/\d+(?:\.\d+)?/g);
   if (!dimMatches || dimMatches.length < 3) {
     return null;
   }
@@ -462,10 +463,11 @@ function calculateShippingCosts(dimStr, weightStr, airRate = 66, seaRate = 15) {
   const volWeight = (l * w * h) / 6000;
 
   const stdWeight = convertWeightToKg(weightStr);
-  const wtMatch = stdWeight.match(/\d+(?:\.\d+)?/);
+  if (!stdWeight || stdWeight === "暂无" || stdWeight === "-") return null;
+  const wtMatch = stdWeight.replace(/(\d+),(\d+)/g, "$1.$2").match(/\d+(?:\.\d+)?/);
   if (!wtMatch) return null;
 
-  const actualWeight = parseFloat(wtMatch[1]);
+  const actualWeight = parseFloat(wtMatch[0]);
   if (isNaN(actualWeight) || actualWeight <= 0) {
     return null;
   }

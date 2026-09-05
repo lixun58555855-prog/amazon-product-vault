@@ -53,8 +53,10 @@
     "price": "$19.99",
     "currency": "$ (USD/CAD/AUD)",
     "site": "amazon.com",
-    "dimensions": "1.38 x 0.8 x 2.2 inches",
-    "weight": "7.4 ounces",
+    "dimensions": "3.5 x 2 x 5.6 cm",
+    "weight": "0.21 kg",
+    "rawDimensions": "1.38 x 0.8 x 2.2 inches",
+    "rawWeight": "7.4 ounces",
     "url": "https://www.amazon.com/dp/B0FJ8DKK45",
     "collectedAt": "2026/9/6 02:04:07",
     "collectedTimestamp": 1788631447573
