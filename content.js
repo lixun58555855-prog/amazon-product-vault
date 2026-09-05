@@ -57,6 +57,8 @@ async function executeProductCollection() {
       price: product.price,
       asin: product.asin,
       imageUrl: product.imageUrl,
+      dimensions: product.dimensions,
+      weight: product.weight,
       syncing: true
     });
 
@@ -220,6 +222,9 @@ function extractAmazonProductDetails() {
   const site = hostname.replace(/^www\./i, '');
   const currency = extractCurrency(price, site);
 
+  // 6. 提取商品长宽高尺寸与重量
+  const { dimensions, weight } = extractDimensionsAndWeight();
+
   // 规范化无污染的商品直达短链接
   const cleanUrl = `https://${hostname}/dp/${asin}`;
 
@@ -233,9 +238,103 @@ function extractAmazonProductDetails() {
     price,
     currency,
     site,
+    dimensions,
+    weight,
     url: cleanUrl,
     collectedAt: formatTime,
     collectedTimestamp: now.getTime()
+  };
+}
+
+/**
+ * 提取商品尺寸（长宽高）与重量
+ * 兼容亚马逊全球站点（US/UK/DE/JP/CN 等），适配列表布局与表格布局
+ */
+function extractDimensionsAndWeight() {
+  let dimensions = "";
+  let weight = "";
+
+  // 辅助函数：清理不可见字符与冗余空白
+  const cleanStr = (str) => {
+    if (!str) return "";
+    return str.replace(/[\u200E\u200F\u00A0]/g, " ").replace(/\s+/g, " ").trim();
+  };
+
+  // 1. 尝试从详情列表 (Detail Bullets) 提取
+  const bulletItems = document.querySelectorAll(
+    "#detailBullets_feature_div li, #detailBulletsWrapper_feature_div li, .detail-bullet-list li, #productDetails_detailBullets_sections1 li"
+  );
+  for (const li of bulletItems) {
+    const text = cleanStr(li.textContent);
+    if (!text) continue;
+
+    const boldEl = li.querySelector(".a-text-bold");
+    const label = cleanStr(boldEl ? boldEl.textContent : "");
+
+    // 匹配尺寸关键词
+    if (/dimensions|dimensiones|abmessungen|尺寸|サイズ/i.test(label || text)) {
+      if (!dimensions) {
+        const val = cleanStr(text.split(/[:：]/).slice(1).join(":"));
+        if (val) dimensions = val;
+      }
+    }
+
+    // 匹配重量关键词
+    if (/weight|gewicht|poids|peso|重量/i.test(label || text)) {
+      if (!weight) {
+        const val = cleanStr(text.split(/[:：]/).slice(1).join(":"));
+        if (val) weight = val;
+      }
+    }
+  }
+
+  // 2. 尝试从技术参数/规格表格 (Tech Spec Table / Prod Details) 提取
+  if (!dimensions || !weight) {
+    const tableRows = document.querySelectorAll(
+      "#productDetails_techSpec_section_1 tr, #prodDetails tr, .prodDetTable tr, #productDetails_db_sections tr, table.a-keyvalue tr, #technicalSpecifications_section_1 tr"
+    );
+    for (const tr of tableRows) {
+      const th = tr.querySelector("th, td.prodDetSectionEntry");
+      const td = tr.querySelector("td, td.prodDetAttrValue");
+      if (!th || !td) continue;
+
+      const label = cleanStr(th.textContent);
+      const val = cleanStr(td.textContent);
+      if (!val) continue;
+
+      if (!dimensions && /dimensions|dimensiones|abmessungen|尺寸|サイズ/i.test(label)) {
+        dimensions = val;
+      }
+      if (!weight && /weight|gewicht|poids|peso|重量/i.test(label)) {
+        weight = val;
+      }
+    }
+  }
+
+  // 3. 处理混合格式（例如尺寸字段内包含分号 "; 1.2 Pounds"）
+  if (dimensions && dimensions.includes(";")) {
+    const parts = dimensions.split(";").map((p) => cleanStr(p));
+    dimensions = parts[0];
+    if (!weight && parts[1] && /pound|oz|ounce|g|gram|kg/i.test(parts[1])) {
+      weight = parts[1];
+    }
+  }
+
+  // 4. 兜底扫描商品详情容器中的特征文本（如带数字乘积格式: "10 x 5 x 2 inches"）
+  if (!dimensions) {
+    const dimensionRegex = /(\d+(?:\.\d+)?\s*(?:x|×|\*)\s*\d+(?:\.\d+)?\s*(?:x|×|\*)\s*\d+(?:\.\d+)?\s*(?:inches|inch|in|cm|mm|m)\b)/i;
+    const detailsContainer = document.querySelector("#detailBullets_feature_div, #productDetails_techSpec_section_1, #prodDetails, #productDescription");
+    if (detailsContainer) {
+      const match = cleanStr(detailsContainer.textContent).match(dimensionRegex);
+      if (match) {
+        dimensions = match[1];
+      }
+    }
+  }
+
+  return {
+    dimensions: dimensions || "暂无",
+    weight: weight || "暂无"
   };
 }
 
@@ -308,7 +407,7 @@ function saveProductToStorage(product) {
 /**
  * 网页原生浮动 Toast 弹窗反馈组件
  */
-function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl }) {
+function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl, dimensions, weight }) {
   // 清理已有浮窗
   const oldToast = document.getElementById('__az_collector_toast_container__');
   if (oldToast) oldToast.remove();
@@ -440,6 +539,12 @@ function showWebToast({ success, isUpdate, title, message, price, asin, imageUrl
         <div class="az-toast-meta">
           <span>ASIN: ${asin}</span>
           <span class="az-toast-price">${price}</span>
+        </div>
+      ` : ''}
+      ${((dimensions && dimensions !== '暂无') || (weight && weight !== '暂无')) ? `
+        <div class="az-toast-specs" style="font-size:11px;color:#94a3b8;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;">
+          ${dimensions && dimensions !== '暂无' ? `<span>📏 ${dimensions}</span>` : ''}
+          ${weight && weight !== '暂无' ? `<span>⚖️ ${weight}</span>` : ''}
         </div>
       ` : ''}
     </div>

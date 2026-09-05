@@ -141,6 +141,10 @@ function renderProducts() {
               <span class="tag-badge">ASIN: ${escapeHtml(item.asin)}</span>
             </div>
           </div>
+          <div class="card-specs-row" style="font-size:11px;color:#94a3b8;margin:2px 0 4px 0;display:flex;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            <span title="尺寸 (长宽高)">📏 ${escapeHtml(item.dimensions || "暂无尺寸")}</span>
+            <span title="重量">⚖️ ${escapeHtml(item.weight || "暂无重量")}</span>
+          </div>
           <div class="card-footer-row">
             <span>${displayTime}</span>
             <button class="btn-card-delete" data-asin="${item.asin}" title="仅从本地插件视窗移除（云端不受任何影响）">
@@ -255,12 +259,14 @@ function exportProductsToCsv() {
     return;
   }
 
-  const headers = ["ASIN", "商品标题", "售价", "币种", "站点", "商品链接", "主图链接", "采集时间", "更新时间"];
+  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (长宽高)", "重量", "站点", "商品链接", "主图链接", "采集时间", "更新时间"];
   const rows = allProducts.map((p) => [
     p.asin || "",
     `"${(p.title || "").replace(/"/g, '""')}"`,
     `"${(p.price || "").replace(/"/g, '""')}"`,
     `"${(p.currency || "").replace(/"/g, '""')}"`,
+    `"${(p.dimensions || "").replace(/"/g, '""')}"`,
+    `"${(p.weight || "").replace(/"/g, '""')}"`,
     p.site || "",
     p.url || "",
     p.imageUrl || "",

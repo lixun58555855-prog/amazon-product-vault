@@ -417,6 +417,10 @@ function renderProducts() {
               ${escapeHtml(item.asin)}
             </span>
           </div>
+          <div class="grid-card-specs">
+            <span class="spec-pill" title="尺寸 (长x宽x高)">📏 ${escapeHtml(item.dimensions || "暂无尺寸")}</span>
+            <span class="spec-pill" title="重量">⚖️ ${escapeHtml(item.weight || "暂无重量")}</span>
+          </div>
           <div class="grid-card-footer">
             <span>${displayTime}</span>
             <div class="card-actions">
@@ -450,6 +454,12 @@ function renderProducts() {
         </td>
         <td>
           <span class="table-price">${escapeHtml(item.price || "未标价")}</span>
+        </td>
+        <td>
+          <span class="table-dim" title="${escapeHtml(item.dimensions || "暂无")}">${escapeHtml(item.dimensions || "-")}</span>
+        </td>
+        <td>
+          <span class="table-weight" title="${escapeHtml(item.weight || "暂无")}">${escapeHtml(item.weight || "-")}</span>
         </td>
         <td>
           <span class="tag-site-pill">${escapeHtml(item.site || "Amazon")}</span>
@@ -705,12 +715,14 @@ function exportToCsv() {
     return;
   }
 
-  const headers = ["ASIN", "商品标题", "售价", "币种", "站点", "商品直达链接", "高清大图链接", "采集时间", "最新更新时间"];
+  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (长宽高)", "重量", "站点", "商品直达链接", "高清大图链接", "采集时间", "最新更新时间"];
   const rows = allProducts.map((p) => [
     p.asin || "",
     `"${(p.title || "").replace(/"/g, '""')}"`,
     `"${(p.price || "").replace(/"/g, '""')}"`,
     `"${(p.currency || "").replace(/"/g, '""')}"`,
+    `"${(p.dimensions || "").replace(/"/g, '""')}"`,
+    `"${(p.weight || "").replace(/"/g, '""')}"`,
     p.site || "",
     p.url || "",
     p.imageUrl || "",
