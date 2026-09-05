@@ -1,5 +1,29 @@
 [
   {
+    "asin": "B00PKNO7LK",
+    "title": "Bentgo Kids Bento-Style 5-Compartment Leak-Proof Lunch Box",
+    "imageUrl": "https://m.media-amazon.com/images/I/71cPv+ssXHL._AC_SL1500_.jpg",
+    "price": "$29.99",
+    "currency": "$ (USD/CAD/AUD)",
+    "site": "amazon.com",
+    "dimensions": "21.6 x 16.5 x 5.1 cm",
+    "weight": "0.59 kg",
+    "rawDimensions": "8.5\"L x 6.5\"W x 2\"H",
+    "rawWeight": "1.3 pounds",
+    "purchasePrice": "",
+    "shipping": {
+      "volWeight": 0.3,
+      "actualWeight": 0.59,
+      "chargeableWeight": 0.59,
+      "airCost": 38.94,
+      "seaCost": 8.85,
+      "isVolumetric": false
+    },
+    "url": "https://www.amazon.com/dp/B00PKNO7LK",
+    "collectedAt": "2026/9/6 03:22:44",
+    "collectedTimestamp": 1788636164552
+  },
+  {
     "asin": "B0DXDQSB16",
     "title": "EASYFUN Bento Box Adult, Lunch Box, 4-Compartment Lunch Containers, Drop-Proof, Dishwasher Safe & Made with BPA-Free Materials(Khaki)",
     "imageUrl": "https://m.media-amazon.com/images/I/81ypLvbXmzL._AC_SL1500_.jpg",
