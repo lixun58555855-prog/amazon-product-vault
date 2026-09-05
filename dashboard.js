@@ -399,6 +399,8 @@ function renderProducts() {
   filtered.forEach((item) => {
     const displayImg = item.imageUrl || defaultImg;
     const displayTime = item.updatedAt ? `${item.updatedAt} (更新)` : (item.collectedAt || "-");
+    const displayDim = convertDimensionsToCm(item.dimensions);
+    const displayWeight = convertWeightToKg(item.weight);
 
     // Grid Card HTML
     gridHtml += `
@@ -418,8 +420,8 @@ function renderProducts() {
             </span>
           </div>
           <div class="grid-card-specs">
-            <span class="spec-pill" title="尺寸 (长x宽x高)">📏 ${escapeHtml(item.dimensions || "暂无尺寸")}</span>
-            <span class="spec-pill" title="重量">⚖️ ${escapeHtml(item.weight || "暂无重量")}</span>
+            <span class="spec-pill" title="尺寸: ${escapeHtml(displayDim)}${item.rawDimensions ? ` (原始: ${escapeHtml(item.rawDimensions)})` : ''}">📏 ${escapeHtml(displayDim)}</span>
+            <span class="spec-pill" title="重量: ${escapeHtml(displayWeight)}${item.rawWeight ? ` (原始: ${escapeHtml(item.rawWeight)})` : ''}">⚖️ ${escapeHtml(displayWeight)}</span>
           </div>
           <div class="grid-card-footer">
             <span>${displayTime}</span>
@@ -456,10 +458,10 @@ function renderProducts() {
           <span class="table-price">${escapeHtml(item.price || "未标价")}</span>
         </td>
         <td>
-          <span class="table-dim" title="${escapeHtml(item.dimensions || "暂无")}">${escapeHtml(item.dimensions || "-")}</span>
+          <span class="table-dim" title="${escapeHtml(displayDim)}${item.rawDimensions ? ` (原始: ${escapeHtml(item.rawDimensions)})` : ''}">${escapeHtml(displayDim)}</span>
         </td>
         <td>
-          <span class="table-weight" title="${escapeHtml(item.weight || "暂无")}">${escapeHtml(item.weight || "-")}</span>
+          <span class="table-weight" title="${escapeHtml(displayWeight)}${item.rawWeight ? ` (原始: ${escapeHtml(item.rawWeight)})` : ''}">${escapeHtml(displayWeight)}</span>
         </td>
         <td>
           <span class="tag-site-pill">${escapeHtml(item.site || "Amazon")}</span>
@@ -715,14 +717,14 @@ function exportToCsv() {
     return;
   }
 
-  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (长宽高)", "重量", "站点", "商品直达链接", "高清大图链接", "采集时间", "最新更新时间"];
+  const headers = ["ASIN", "商品标题", "售价", "币种", "尺寸 (cm)", "重量 (kg)", "站点", "商品直达链接", "高清大图链接", "采集时间", "最新更新时间"];
   const rows = allProducts.map((p) => [
     p.asin || "",
     `"${(p.title || "").replace(/"/g, '""')}"`,
     `"${(p.price || "").replace(/"/g, '""')}"`,
     `"${(p.currency || "").replace(/"/g, '""')}"`,
-    `"${(p.dimensions || "").replace(/"/g, '""')}"`,
-    `"${(p.weight || "").replace(/"/g, '""')}"`,
+    `"${(convertDimensionsToCm(p.dimensions) || "").replace(/"/g, '""')}"`,
+    `"${(convertWeightToKg(p.weight) || "").replace(/"/g, '""')}"`,
     p.site || "",
     p.url || "",
     p.imageUrl || "",
@@ -1243,5 +1245,86 @@ function base64ToUtf8(base64) {
     bytes[i] = binary.charCodeAt(i);
   }
   return new TextDecoder().decode(bytes);
+}
+
+/**
+ * 尺寸智能换算：将任意长度单位（英寸/毫米/米）标准化换算为厘米 (cm)
+ */
+function convertDimensionsToCm(dimStr) {
+  if (!dimStr || dimStr === "暂无" || dimStr === "-") return "暂无";
+
+  const numbers = dimStr.match(/\d+(?:\.\d+)?/g);
+  if (!numbers || numbers.length === 0) return dimStr;
+
+  const lower = dimStr.toLowerCase();
+  let factor = 1;
+  let isConverted = false;
+
+  if (/inch|inches|\bin\b|["”]/.test(lower)) {
+    factor = 2.54;
+    isConverted = true;
+  } else if (/mm|毫米/.test(lower)) {
+    factor = 0.1;
+    isConverted = true;
+  } else if (/\bm\b|米/.test(lower) && !/cm|mm/.test(lower)) {
+    factor = 100;
+    isConverted = true;
+  } else if (/cm|厘米/.test(lower)) {
+    factor = 1;
+    isConverted = true;
+  } else if (numbers.length >= 2) {
+    const maxNum = Math.max(...numbers.map(Number));
+    if (maxNum < 60) {
+      factor = 2.54;
+      isConverted = true;
+    }
+  }
+
+  if (isConverted) {
+    const convertedNums = numbers.slice(0, 3).map((num) => {
+      const val = parseFloat(num) * factor;
+      return val < 1 ? Math.round(val * 100) / 100 : Math.round(val * 10) / 10;
+    });
+    return `${convertedNums.join(" x ")} cm`;
+  }
+
+  return dimStr;
+}
+
+/**
+ * 重量智能换算：将任意重量单位（英镑/盎司/克）标准化换算为千克 (kg)
+ */
+function convertWeightToKg(weightStr) {
+  if (!weightStr || weightStr === "暂无" || weightStr === "-") return "暂无";
+
+  const match = weightStr.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return weightStr;
+
+  const num = parseFloat(match[1]);
+  if (isNaN(num)) return weightStr;
+
+  const lower = weightStr.toLowerCase();
+  let kgVal = num;
+
+  if (/pound|pounds|\blbs?\b|磅/.test(lower)) {
+    kgVal = num * 0.45359237;
+  } else if (/ounce|ounces|\boz\b|盎司/.test(lower)) {
+    kgVal = num * 0.02834952;
+  } else if (/(\bg\b|grams?|克)/.test(lower) && !/kg|kilogram|千克|公斤/.test(lower)) {
+    kgVal = num / 1000;
+  } else if (/kg|kilogram|千克|公斤/.test(lower)) {
+    kgVal = num;
+  } else {
+    kgVal = num * 0.45359237;
+  }
+
+  let formattedKg;
+  if (kgVal < 0.1) {
+    formattedKg = Math.round(kgVal * 1000) / 1000;
+  } else {
+    formattedKg = Math.round(kgVal * 100) / 100;
+  }
+
+  return `${formattedKg} kg`;
 }
 

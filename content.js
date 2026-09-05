@@ -222,8 +222,10 @@ function extractAmazonProductDetails() {
   const site = hostname.replace(/^www\./i, '');
   const currency = extractCurrency(price, site);
 
-  // 6. 提取商品长宽高尺寸与重量
-  const { dimensions, weight } = extractDimensionsAndWeight();
+  // 6. 提取商品长宽高尺寸与重量并自动换算为标准公制单位 (cm 与 kg)
+  const { dimensions: rawDim, weight: rawWt } = extractDimensionsAndWeight();
+  const dimensions = convertDimensionsToCm(rawDim);
+  const weight = convertWeightToKg(rawWt);
 
   // 规范化无污染的商品直达短链接
   const cleanUrl = `https://${hostname}/dp/${asin}`;
@@ -240,6 +242,8 @@ function extractAmazonProductDetails() {
     site,
     dimensions,
     weight,
+    rawDimensions: rawDim,
+    rawWeight: rawWt,
     url: cleanUrl,
     collectedAt: formatTime,
     collectedTimestamp: now.getTime()
@@ -247,7 +251,7 @@ function extractAmazonProductDetails() {
 }
 
 /**
- * 提取商品尺寸（长宽高）与重量
+ * 提取商品原始尺寸（长宽高）与重量
  * 兼容亚马逊全球站点（US/UK/DE/JP/CN 等），适配列表布局与表格布局
  */
 function extractDimensionsAndWeight() {
@@ -336,6 +340,94 @@ function extractDimensionsAndWeight() {
     dimensions: dimensions || "暂无",
     weight: weight || "暂无"
   };
+}
+
+/**
+ * 尺寸智能换算：将任意长度单位（英寸/毫米/米）标准化换算为厘米 (cm)
+ * @param {string} dimStr 原始尺寸文本，例如 "10 x 5 x 2 inches" 或 "250 x 120 x 50 mm"
+ * @returns {string} 换算后的尺寸文本，例如 "25.4 x 12.7 x 5.1 cm"
+ */
+function convertDimensionsToCm(dimStr) {
+  if (!dimStr || dimStr === "暂无" || dimStr === "-") return "暂无";
+
+  // 提取字符串中的所有数值 (浮点数)
+  const numbers = dimStr.match(/\d+(?:\.\d+)?/g);
+  if (!numbers || numbers.length === 0) return dimStr;
+
+  const lower = dimStr.toLowerCase();
+  let factor = 1;
+  let isConverted = false;
+
+  if (/inch|inches|\bin\b|["”]/.test(lower)) {
+    factor = 2.54; // 1 英寸 = 2.54 厘米
+    isConverted = true;
+  } else if (/mm|毫米/.test(lower)) {
+    factor = 0.1; // 1 毫米 = 0.1 厘米
+    isConverted = true;
+  } else if (/\bm\b|米/.test(lower) && !/cm|mm/.test(lower)) {
+    factor = 100; // 1 米 = 100 厘米
+    isConverted = true;
+  } else if (/cm|厘米/.test(lower)) {
+    factor = 1;
+    isConverted = true;
+  } else if (numbers.length >= 2) {
+    // 若未写单位但带乘号且数值较小，通常为美亚默认的英寸
+    const maxNum = Math.max(...numbers.map(Number));
+    if (maxNum < 60) {
+      factor = 2.54;
+      isConverted = true;
+    }
+  }
+
+  if (isConverted) {
+    const convertedNums = numbers.slice(0, 3).map((num) => {
+      const val = parseFloat(num) * factor;
+      return val < 1 ? Math.round(val * 100) / 100 : Math.round(val * 10) / 10;
+    });
+    return `${convertedNums.join(" x ")} cm`;
+  }
+
+  return dimStr;
+}
+
+/**
+ * 重量智能换算：将任意重量单位（英镑/盎司/克）标准化换算为千克 (kg)
+ * @param {string} weightStr 原始重量文本，例如 "1.2 Pounds" 或 "500 Grams" 或 "16 oz"
+ * @returns {string} 换算后的重量文本，例如 "0.54 kg"
+ */
+function convertWeightToKg(weightStr) {
+  if (!weightStr || weightStr === "暂无" || weightStr === "-") return "暂无";
+
+  const match = weightStr.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return weightStr;
+
+  const num = parseFloat(match[1]);
+  if (isNaN(num)) return weightStr;
+
+  const lower = weightStr.toLowerCase();
+  let kgVal = num;
+
+  if (/pound|pounds|\blbs?\b|磅/.test(lower)) {
+    kgVal = num * 0.45359237; // 1 磅 ≈ 0.4536 kg
+  } else if (/ounce|ounces|\boz\b|盎司/.test(lower)) {
+    kgVal = num * 0.02834952; // 1 盎司 ≈ 0.02835 kg
+  } else if (/(\bg\b|grams?|克)/.test(lower) && !/kg|kilogram|千克|公斤/.test(lower)) {
+    kgVal = num / 1000; // 1 克 = 0.001 kg
+  } else if (/kg|kilogram|千克|公斤/.test(lower)) {
+    kgVal = num;
+  } else {
+    // 默认若未标明单位，视作英镑
+    kgVal = num * 0.45359237;
+  }
+
+  let formattedKg;
+  if (kgVal < 0.1) {
+    formattedKg = Math.round(kgVal * 1000) / 1000; // 极轻商品保留 3 位
+  } else {
+    formattedKg = Math.round(kgVal * 100) / 100; // 保留 2 位
+  }
+
+  return `${formattedKg} kg`;
 }
 
 /**
