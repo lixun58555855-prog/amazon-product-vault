@@ -210,7 +210,51 @@ function initUI() {
       if (gh && gh.style.display !== "none") {
         closeGithubModal();
       }
+      const um = document.getElementById("cloudUrlsModal");
+      if (um && um.style.display !== "none") {
+        closeCloudUrlsModal();
+      }
     }
+  });
+
+  // 项目核心网址导航弹窗事件
+  const btnOpenUrls = document.getElementById("btnOpenUrlsModal");
+  if (btnOpenUrls) btnOpenUrls.addEventListener("click", openCloudUrlsModal);
+
+  const btnCloseUrls = document.getElementById("btnCloseUrlsModal");
+  if (btnCloseUrls) btnCloseUrls.addEventListener("click", closeCloudUrlsModal);
+
+  const btnCloseUrlsFooter = document.getElementById("btnCloseUrlsModalFooter");
+  if (btnCloseUrlsFooter) btnCloseUrlsFooter.addEventListener("click", closeCloudUrlsModal);
+
+  const urlsModal = document.getElementById("cloudUrlsModal");
+  if (urlsModal) {
+    urlsModal.addEventListener("click", (e) => {
+      if (e.target.id === "cloudUrlsModal") closeCloudUrlsModal();
+    });
+  }
+
+  // 一键复制网址按钮
+  document.querySelectorAll(".btn-copy-url").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.dataset.target;
+      const inp = document.getElementById(targetId);
+      if (!inp) return;
+      navigator.clipboard.writeText(inp.value).then(() => {
+        const origText = btn.textContent;
+        btn.textContent = "✓ 已复制!";
+        btn.classList.add("copied");
+        showToast("已成功复制链接到剪贴板！");
+        setTimeout(() => {
+          btn.textContent = origText;
+          btn.classList.remove("copied");
+        }, 1800);
+      }).catch(() => {
+        inp.select();
+        document.execCommand("copy");
+        showToast("已成功复制链接到剪贴板！");
+      });
+    });
   });
 
   // 加载已有 GitHub 配置
@@ -1330,6 +1374,49 @@ let currentGithubConfig = {
   branch: "main",
   token: ""
 };
+
+/**
+ * 打开项目核心网址导航弹窗
+ */
+function openCloudUrlsModal() {
+  const owner = currentGithubConfig.owner || "lixun58555855-prog";
+  const repo = currentGithubConfig.repo || "amazon-product-vault";
+  const branch = currentGithubConfig.branch || "main";
+
+  const cloudPagesUrl = `https://${owner}.github.io/${repo}/`;
+  const githubDbUrl = `https://github.com/${owner}/${repo}/blob/${branch}/data/products.json`;
+  const githubRepoUrl = `https://github.com/${owner}/${repo}`;
+
+  const inputCloudPages = document.getElementById("inputCloudPagesUrl");
+  const linkCloudPages = document.getElementById("linkOpenCloudPages");
+  const inputGithubDb = document.getElementById("inputGithubDbUrl");
+  const linkGithubDb = document.getElementById("linkOpenGithubDb");
+  const linkRepoHome = document.getElementById("linkGithubRepoHome");
+
+  if (inputCloudPages) inputCloudPages.value = cloudPagesUrl;
+  if (linkCloudPages) linkCloudPages.href = cloudPagesUrl;
+  if (inputGithubDb) inputGithubDb.value = githubDbUrl;
+  if (linkGithubDb) linkGithubDb.href = githubDbUrl;
+  if (linkRepoHome) {
+    linkRepoHome.href = githubRepoUrl;
+    linkRepoHome.textContent = githubRepoUrl;
+  }
+
+  const modal = document.getElementById("cloudUrlsModal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+}
+
+/**
+ * 关闭项目核心网址导航弹窗
+ */
+function closeCloudUrlsModal() {
+  const modal = document.getElementById("cloudUrlsModal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
 
 /**
  * 打开 GitHub 配置弹窗

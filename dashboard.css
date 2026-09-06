@@ -1196,6 +1196,153 @@ body {
   gap: 10px;
 }
 
+/* ==========================================================================
+   项目核心网址导航弹窗样式
+   ========================================================================== */
+.modal-card.urls-modal-card {
+  max-width: 620px;
+}
+
+.url-card-item {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.url-card-item:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.url-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.url-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.url-badge.cloud {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.url-badge.db {
+  background: rgba(46, 164, 79, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(46, 164, 79, 0.35);
+}
+
+.url-sub-hint {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.url-input-action-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.url-display-input {
+  flex: 1;
+  background: #090d16;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-family: monospace;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.url-display-input:focus {
+  border-color: #38bdf8;
+}
+
+.btn-copy-url {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-copy-url.copied {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #10b981 !important;
+}
+
+.btn-open-link {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.url-item-desc {
+  margin: 8px 0 0 0;
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.url-item-desc code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #38bdf8;
+}
+
+.url-repo-footer-tip {
+  margin-top: 4px;
+  padding: 10px 14px;
+  background: rgba(30, 41, 59, 0.45);
+  border-radius: 8px;
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.url-repo-footer-tip a {
+  color: #38bdf8;
+  text-decoration: none;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url-repo-footer-tip a:hover {
+  text-decoration: underline;
+}
+
 /* 访问密码锁全屏遮罩 */
 .lock-overlay {
   position: fixed;

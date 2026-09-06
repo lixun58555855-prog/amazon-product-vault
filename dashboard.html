@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>亚马逊本地产品库 - Amazon Product Vault</title>
-  <link rel="stylesheet" href="dashboard.css?v=20260906_lb">
+  <link rel="stylesheet" href="dashboard.css?v=20260906_urls">
 </head>
 <body>
   <!-- 访问安全密码锁遮罩 (密码: 888) -->
@@ -47,6 +47,10 @@
         </button>
         <button id="btnPullFromGithub" class="btn btn-secondary" title="从 GitHub 云端拉取最新数据并与本地合并">
           ⬇️ 云端拉取
+        </button>
+        <button id="btnOpenUrlsModal" class="btn btn-secondary" title="查看云端产品库网址与 GitHub 数据库网址">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          🌐 网址导航
         </button>
         <button id="btnOpenGithubModal" class="btn btn-secondary" title="配置 GitHub 仓库与访问令牌">
           ⚙️ GitHub 配置
@@ -228,6 +232,66 @@
       </div>
     </div>
 
+    <!-- 云端产品库与 GitHub 数据库网址弹窗对话框 -->
+    <div id="cloudUrlsModal" class="modal-overlay" style="display:none;">
+      <div class="modal-card urls-modal-card">
+        <div class="modal-header">
+          <h3>🌐 项目核心网址导航</h3>
+          <button id="btnCloseUrlsModal" class="btn-close" title="关闭 (Esc)">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-tip">
+            下方为本项目对应的<b>在线云端产品库</b>及 <b>GitHub 产品数据库</b>网址，点击可一键复制或快速跳转：
+          </p>
+          
+          <!-- 1. 云端产品库网址 -->
+          <div class="url-card-item">
+            <div class="url-card-header">
+              <span class="url-badge cloud">🌐 1. 云端产品库网址 (在线访问)</span>
+              <span class="url-sub-hint">手机/电脑免插件直接访问</span>
+            </div>
+            <div class="url-input-action-row">
+              <input type="text" id="inputCloudPagesUrl" class="url-display-input" readonly value="https://lixun58555855-prog.github.io/amazon-product-vault/" />
+              <button type="button" id="btnCopyCloudPagesUrl" class="btn btn-primary-github btn-copy-url" data-target="inputCloudPagesUrl">
+                📋 复制网址
+              </button>
+              <a id="linkOpenCloudPages" href="https://lixun58555855-prog.github.io/amazon-product-vault/" target="_blank" class="btn btn-secondary btn-open-link">
+                🚀 直接打开
+              </a>
+            </div>
+            <p class="url-item-desc">云端在线产品库：支持密码保护、多端浏览、详细表格视图编辑与头程运费实时自动重算。</p>
+          </div>
+
+          <!-- 2. GitHub 产品数据库网址 -->
+          <div class="url-card-item">
+            <div class="url-card-header">
+              <span class="url-badge db">🗄️ 2. GitHub 产品数据库网址 (JSON数据源)</span>
+              <span class="url-sub-hint">云端持久化存储 • 原始数据</span>
+            </div>
+            <div class="url-input-action-row">
+              <input type="text" id="inputGithubDbUrl" class="url-display-input" readonly value="https://github.com/lixun58555855-prog/amazon-product-vault/blob/main/data/products.json" />
+              <button type="button" id="btnCopyGithubDbUrl" class="btn btn-primary-github btn-copy-url" data-target="inputGithubDbUrl">
+                📋 复制网址
+              </button>
+              <a id="linkOpenGithubDb" href="https://github.com/lixun58555855-prog/amazon-product-vault/blob/main/data/products.json" target="_blank" class="btn btn-secondary btn-open-link">
+                📂 打开文件
+              </a>
+            </div>
+            <p class="url-item-desc">GitHub 云端数据库文件（<code>data/products.json</code>）：存放所有已采集商品的所有字段数据，支持历史版本回溯与备份。</p>
+          </div>
+
+          <!-- 附：GitHub 代码仓库主页 -->
+          <div class="url-repo-footer-tip">
+            <span>📦 GitHub 仓库主页：</span>
+            <a id="linkGithubRepoHome" href="https://github.com/lixun58555855-prog/amazon-product-vault" target="_blank">https://github.com/lixun58555855-prog/amazon-product-vault</a>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btnCloseUrlsModalFooter" class="btn btn-secondary">关闭</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 商品高清大图预览灯箱 (Lightbox) -->
     <div id="imageLightboxModal" class="lightbox-overlay" style="display:none;">
       <div class="lightbox-backdrop"></div>
@@ -250,6 +314,6 @@
     </div>
   </div>
 
-  <script src="dashboard.js?v=20260906_lb"></script>
+  <script src="dashboard.js?v=20260906_urls"></script>
 </body>
 </html>
