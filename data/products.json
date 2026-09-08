@@ -1,5 +1,29 @@
 [
   {
+    "asin": "B0D824SCQJ",
+    "title": "TheStack™ Radar | Golf Launch Monitor | App-Based Training System and Golf Swing Analyzer | Trainer Golf Swing Training Aid | Golf Launch Monitor Portable",
+    "imageUrl": "https://m.media-amazon.com/images/I/71PcQpRUKML._AC_SL1500_.jpg",
+    "price": "$289.00",
+    "currency": "$ (USD/CAD/AUD)",
+    "site": "amazon.com",
+    "dimensions": "17.5 x 8.2 x 3.5 cm",
+    "weight": "0.14 kg",
+    "rawDimensions": "6.89 x 3.23 x 1.38 inches",
+    "rawWeight": "0.14 kg",
+    "purchasePrice": "",
+    "shipping": {
+      "volWeight": 0.08,
+      "actualWeight": 0.14,
+      "chargeableWeight": 0.14,
+      "airCost": 9.24,
+      "seaCost": 2.1,
+      "isVolumetric": false
+    },
+    "url": "https://www.amazon.com/dp/B0D824SCQJ",
+    "collectedAt": "2026/9/8 23:41:13",
+    "collectedTimestamp": 1788882073557
+  },
+  {
     "asin": "B0FGCPGD8S",
     "title": "ArtyMaster Portable Drill Guide for Straight Holes – Precision Drilling Jig with Chuck Key, Drill Guide Attachment, Portable Drill Press Adapter for Woodworking, WT116A",
     "imageUrl": "https://m.media-amazon.com/images/I/71AXiZ4T05L._AC_SL1500_.jpg",
