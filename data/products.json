@@ -1,5 +1,29 @@
 [
   {
+    "asin": "B0CBQKND5W",
+    "title": "Smart Geiger Counter Radiacode-102 with Free Mobile App. Nuclear Radiation Detector",
+    "imageUrl": "https://m.media-amazon.com/images/I/712sjjLtaYL._SL1500_.jpg",
+    "price": "$249.00",
+    "currency": "$ (USD/CAD/AUD)",
+    "site": "amazon.com",
+    "dimensions": "14.5 x 10.5 x 3.5 cm",
+    "weight": "0.067 kg",
+    "rawDimensions": "5.71 x 4.13 x 1.38 inches",
+    "rawWeight": "2.36 ounces",
+    "purchasePrice": "",
+    "shipping": {
+      "volWeight": 0.09,
+      "actualWeight": 0.07,
+      "chargeableWeight": 0.09,
+      "airCost": 5.86,
+      "seaCost": 1.33,
+      "isVolumetric": true
+    },
+    "url": "https://www.amazon.com/dp/B0CBQKND5W",
+    "collectedAt": "2026/9/8 23:29:07",
+    "collectedTimestamp": 1788881347891
+  },
+  {
     "asin": "B00PKNO7LK",
     "title": "Bentgo Kids Bento-Style 5-Compartment Leak-Proof Lunch Box",
     "imageUrl": "https://m.media-amazon.com/images/I/71cPv+ssXHL._AC_SL1500_.jpg",
